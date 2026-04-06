@@ -15,8 +15,6 @@ from build.TyCLexer import TyCLexer
 from build.TyCParser import TyCParser
 from antlr4 import InputStream, CommonTokenStream
 from src.utils.error_listener import NewErrorListener
-from src.semantics.static_checker import StaticChecker
-from src.astgen.ast_generation import ASTGeneration
 
 
 class ASTGenerator:
@@ -32,6 +30,8 @@ class ASTGenerator:
         self.parser.addErrorListener(NewErrorListener.INSTANCE)
         # Import here to avoid circular dependency issues during build
         try:
+            from src.astgen.ast_generation import ASTGeneration
+
             self.ast_generator = ASTGeneration()
         except ImportError:
             self.ast_generator = None
@@ -63,20 +63,16 @@ class Tokenizer:
         lexer = TyCLexer(input_stream)
 
         tokens = []
-        try:
-            while True:
-                token = lexer.nextToken()
-                if token.type == -1:  # EOF
-                    tokens.append("<EOF>")
-                    break
-                tokens.append(token.text if token.text else "")
-        except Exception as e:
-            # If we already have some tokens, append error message
-            if tokens:
-                tokens.append(str(e))
-            else:
-                # If no tokens yet, just return error message
-                return str(e)
+        # SỬA Ở ĐÂY: Xóa try...except để Exception (ErrorToken, UncloseString...) 
+        # có thể văng ra ngoài và được bắt bởi các test case.
+        while True:
+            token = lexer.nextToken()
+            if token.type == -1:  # EOF
+                tokens.append("EOF")
+                break
+            token_type = lexer.symbolicNames[token.type]
+            token_text = token.text if token.text else ""
+            tokens.append(f"{token_type},{token_text}")
 
         return ",".join(tokens)
 
@@ -96,37 +92,9 @@ class Parser:
         parser.removeErrorListeners()
         parser.addErrorListener(NewErrorListener.INSTANCE)
 
+        # GIỮ NGUYÊN Ở ĐÂY: Test case của Parser mong đợi trả về chuỗi thay vì văng lỗi
         try:
             tree = parser.program()
             return "success"
-        except Exception as e:
-            return str(e)
-
-
-class Checker:
-    """Class to perform static checking on the AST."""
-
-    def __init__(self, source=None, ast=None):
-        self.source = source
-        self.ast = ast
-        self.checker = StaticChecker()
-
-    def check_from_ast(self):
-        """Perform static checking on the AST."""
-        try:
-            self.checker.check_program(self.ast)
-            return "Static checking passed"
-        except Exception as e:
-            return str(e)
-
-    def check_from_source(self):
-        """Perform static checking on the source code."""
-        try:
-            ast_gen = ASTGenerator(self.source)
-            self.ast = ast_gen.generate()
-            if isinstance(self.ast, str):  # If AST generation failed
-                return self.ast
-            self.checker.check_program(self.ast)
-            return "Static checking passed"
         except Exception as e:
             return str(e)
