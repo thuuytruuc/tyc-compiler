@@ -98,3 +98,35 @@ class Parser:
             return "success"
         except Exception as e:
             return str(e)
+
+
+class Checker:
+    """Semantic checker wrapper for testing.
+
+    Usage::
+
+        result = Checker(source).check_from_source()
+        # Returns "Static checking passed" or error string like
+        # "Redeclared(Variable, x)"
+    """
+
+    def __init__(self, source_code: str):
+        self.source_code = source_code
+
+    def check_from_source(self) -> str:
+        """Parse source, generate AST, run static checker, return result string."""
+        from src.semantics.static_checker import StaticChecker
+        from src.semantics.static_error import StaticError
+
+        ast_gen = ASTGenerator(self.source_code)
+        ast = ast_gen.generate()
+
+        if isinstance(ast, str):
+            # AST generation failed
+            return ast
+
+        checker = StaticChecker()
+        try:
+            return checker.check(ast)
+        except StaticError as e:
+            return str(e)
