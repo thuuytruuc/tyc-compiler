@@ -11,11 +11,11 @@ class ASTGeneration(TyCVisitor):
 
     def visitProgram(self, ctx):
         decls = []
-        for s in ctx.structs():
-            decls.extend(self.visit(s))
-
-        for f in ctx.function():
-            decls.append(self.visit(f))
+        for child in ctx.children:
+            if isinstance(child, TyCParser.StructsContext):
+                decls.extend(self.visit(child))
+            elif isinstance(child, TyCParser.FunctionContext):
+                decls.append(self.visit(child))
 
         return Program(decls)
 

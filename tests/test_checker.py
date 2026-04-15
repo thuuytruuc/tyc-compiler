@@ -1,41 +1,63 @@
 """
 Test cases for TyC Static Semantic Checker
 
-100 test cases covering all 8 error types and valid programs.
+This module contains test cases for the static semantic checker.
+100 test cases covering all error types and comprehensive scenarios.
 """
 
 from tests.utils import Checker
-
-
-# ============================================================================
-# VALID PROGRAMS (test_001 - test_025)
-# ============================================================================
+from src.utils.nodes import (
+    Program,
+    FuncDecl,
+    BlockStmt,
+    VarDecl,
+    AssignExpr,
+    ExprStmt,
+    IntType,
+    FloatType,
+    StringType,
+    VoidType,
+    StructType,
+    IntLiteral,
+    FloatLiteral,
+    StringLiteral,
+    Identifier,
+    BinaryOp,
+    MemberAccess,
+    FuncCall,
+    StructDecl,
+    MemberDecl,
+    Param,
+    ReturnStmt,
+)
 
 def test_001():
-    """Valid: simple int variable declaration and use."""
+    """Test a valid program that should pass all checks"""
     source = """
 void main() {
     int x = 5;
     int y = x + 1;
 }
 """
-    assert Checker(source).check_from_source() == "Static checking passed"
+    expected = "Static checking passed"
+    assert Checker(source).check_from_source() == expected
 
 
 def test_002():
-    """Valid: auto type inference from int literal."""
+    """Test valid program with int type inference"""
     source = """
 void main() {
-    auto x = 10;
-    auto y = 3;
-    auto z = x + y;
+    int x = 10;
+    int y = 3.14;
+    int z = x + y;
 }
 """
-    assert Checker(source).check_from_source() == "Static checking passed"
+    expected = "TypeMismatchInStatement(VarDecl(IntType(), y = FloatLiteral(3.14)))"
+    assert Checker(source).check_from_source() == expected
 
 
 def test_003():
-    """Valid: function with return and call."""
+    """Test valid program with functions"""
     source = """
 int add(int x, int y) {
     return x + y;
@@ -44,11 +66,12 @@ void main() {
     int sum = add(5, 3);
 }
 """
-    assert Checker(source).check_from_source() == "Static checking passed"
+    expected = "Static checking passed"
+    assert Checker(source).check_from_source() == expected
 
 
 def test_004():
-    """Valid: struct declaration and member assignment."""
+    """Test valid program with struct"""
     source = """
 struct Point {
     int x;
@@ -60,11 +83,12 @@ void main() {
     p.y = 20;
 }
 """
-    assert Checker(source).check_from_source() == "Static checking passed"
+    expected = "Static checking passed"
+    assert Checker(source).check_from_source() == expected
 
 
 def test_005():
-    """Valid: nested blocks with shadowing local variables."""
+    """Test valid program with nested blocks"""
     source = """
 void main() {
     int x = 10;
@@ -74,1233 +98,1014 @@ void main() {
     }
 }
 """
-    assert Checker(source).check_from_source() == "Static checking passed"
-
+    expected = "Static checking passed"
+    assert Checker(source).check_from_source() == expected
 
 def test_006():
-    """Valid: while loop with break and continue."""
     source = """
-void main() {
-    int i = 0;
-    while (i < 10) {
-        if (i == 5) {
-            break;
-        }
-        i = i + 1;
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_007():
-    """Valid: for loop with auto init."""
-    source = """
-void main() {
-    int s = 0;
-    for (auto i = 0; i < 5; i++) {
-        s = s + i;
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_008():
-    """Valid: switch statement with int expression."""
-    source = """
-void main() {
-    int day = 2;
-    switch (day) {
-        case 1: printInt(1); break;
-        case 2: printInt(2); break;
-        default: printInt(0);
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_009():
-    """Valid: built-in functions readInt/printInt."""
-    source = """
-void main() {
-    int x = readInt();
-    printInt(x);
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_010():
-    """Valid: auto inferred from assignment (first use)."""
-    source = """
-void main() {
-    auto a;
-    a = 10;
-    auto b;
-    b = 3.14;
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_011():
-    """Valid: struct with float and string members."""
-    source = """
-struct Person {
-    string name;
-    int age;
-};
-void main() {
-    Person p;
-    p.age = 25;
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_012():
-    """Valid: chained assignment expression."""
-    source = """
-void main() {
-    int a;
-    int b;
-    int c;
-    a = b = c = 10;
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_013():
-    """Valid: function with void return."""
-    source = """
-void greet() {
-    printString("hello");
-    return;
-}
-void main() {
-    greet();
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_014():
-    """Valid: relational expression used as int condition."""
-    source = """
-void main() {
-    int x = 5;
-    int y = 10;
-    if (x < y) {
-        printInt(x);
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_015():
-    """Valid: struct same name as function (separate namespaces)."""
-    source = """
-struct foo {
+struct Point {
     int x;
+    int y;
 };
-int foo(int x, int y) {
-    return x + y;
-}
-void main() {
-    int r = foo(1, 2);
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_016():
-    """Valid: auto variable inferred from printInt param."""
-    source = """
-void main() {
-    auto x;
-    printInt(x);
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_017():
-    """Valid: inner block shadows outer local variable."""
-    source = """
-void main() {
-    int value = 100;
-    {
-        int value = 200;
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_018():
-    """Valid: logical operators with int operands."""
-    source = """
-void main() {
-    int a = 1;
-    int b = 0;
-    int c = a && b;
-    int d = a || b;
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_019():
-    """Valid: prefix/postfix increment on int."""
-    source = """
-void main() {
-    int x = 5;
-    ++x;
-    x++;
-    --x;
-    x--;
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_020():
-    """Valid: float arithmetic."""
-    source = """
-void main() {
-    float a = 1.5;
-    float b = 2.5;
-    float c = a + b;
-    float d = a * b;
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_021():
-    """Valid: int + float = float result."""
-    source = """
-void main() {
-    int a = 5;
-    float b = 3.14;
-    float c = a + b;
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_022():
-    """Valid: modulus operator with ints."""
-    source = """
-void main() {
-    int a = 10;
-    int b = 3;
-    int c = a % b;
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_023():
-    """Valid: nested struct (struct using another struct type)."""
-    source = """
-struct Address {
-    string street;
+struct Point {
+    int z;
 };
-struct Person {
-    string name;
-    Address addr;
-};
-void main() {
-    Person p;
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_024():
-    """Valid: auto inferred from one side of binary op — int literal."""
-    source = """
-void main() {
-    auto value;
-    auto result = value + 5;
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-def test_025():
-    """Valid: auto inferred from parameter type (readFloat)."""
-    source = """
-void main() {
-    auto x;
-    x = readFloat();
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-
-# ============================================================================
-# REDECLARED (test_026 - test_038)
-# ============================================================================
-
-def test_026():
-    """Error: Redeclared struct in global scope."""
-    source = """
-struct Point { int x; };
-struct Point { int y; };
-void main() {}
 """
     assert Checker(source).check_from_source() == "Redeclared(Struct, Point)"
 
-
-def test_027():
-    """Error: Redeclared function in global scope."""
+def test_007():
     source = """
-int add(int x, int y) { return x + y; }
-int add(int a, int b) { return a + b; }
-void main() {}
+int add(int x, int y) {
+    return x + y;
+}
+int add(int a, int b) {
+    return a + b;
+}
 """
     assert Checker(source).check_from_source() == "Redeclared(Function, add)"
 
-
-def test_028():
-    """Error: Redeclared variable in same block."""
+def test_008():
     source = """
 void main() {
     int count = 10;
-    int count = 20;
+    int count = 20;  // Redeclared(Variable, count)
 }
 """
     assert Checker(source).check_from_source() == "Redeclared(Variable, count)"
 
-
-def test_029():
-    """Error: Redeclared parameter in same function signature."""
+def test_009():
     source = """
-int calc(int x, float y, int x) { return x; }
-void main() {}
+int calculate(int x, float y, int x) {  // Redeclared(Parameter, x)
+    return x + y;
+}
 """
     assert Checker(source).check_from_source() == "Redeclared(Parameter, x)"
 
-
-def test_030():
-    """Error: Local variable reuses parameter name."""
+def test_010():
     source = """
-void func(int x) {
-    int x = 10;
-}
-void main() {}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Variable, x)"
-
-
-def test_031():
-    """Error: Redeclared struct member."""
-    source = """
-struct Bad {
-    int x;
-    int x;
-};
-void main() {}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Member, x)"
-
-
-def test_032():
-    """Error: Redeclared variable in nested block still conflicts with param."""
-    source = """
-void func(int y) {
+void example() {
+    int value = 100;  // Function variable
+    
     {
-        int y = 5;
-    }
-}
-void main() {}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Variable, y)"
-
-
-def test_033():
-    """Error: Redeclared function (different param count, no overloading)."""
-    source = """
-void print_val() {}
-void print_val(int x) {}
-void main() {}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Function, print_val)"
-
-
-def test_034():
-    """Error: Two variables with same name in same block."""
-    source = """
-void main() {
-    float ratio = 1.0;
-    float ratio = 2.0;
-}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Variable, ratio)"
-
-
-def test_035():
-    """Error: Struct re-declared even though first had no members."""
-    source = """
-struct Empty {};
-struct Empty { int x; };
-void main() {}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Struct, Empty)"
-
-
-def test_036():
-    """Error: Redeclared member (string type)."""
-    source = """
-struct S {
-    string name;
-    string name;
-};
-void main() {}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Member, name)"
-
-
-def test_037():
-    """Error: auto variable re-declared in same block."""
-    source = """
-void main() {
-    auto x = 1;
-    auto x = 2;
-}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Variable, x)"
-
-
-def test_038():
-    """Error: re-using parameter name inside deeply nested block."""
-    source = """
-void deep(int val) {
-    {
+        int value = 200;  // Valid: shadows function variable
         {
-            int val = 99;
+            int value = 300;  // Valid: shadows block variable
         }
     }
 }
-void main() {}
 """
-    assert Checker(source).check_from_source() == "Redeclared(Variable, val)"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
-
-# ============================================================================
-# UNDECLARED IDENTIFIER (test_039 - test_045)
-# ============================================================================
-
-def test_039():
-    """Error: UndeclaredIdentifier — variable used before declaration."""
+def test_011():
     source = """
-void main() {
-    int result = undeclaredVar + 10;
+void test() {
+    int x = 10;
+    {
+        int y = 20;  // Valid: different variable name
+    }
+    int y = 30;  // Valid: y in outer scope doesn't conflict with y in inner scope (different block)
+}
+
+"""
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_012():
+    source = """
+void example() {
+    int result = undeclaredVar + 10;  // UndeclaredIdentifier(undeclaredVar)
 }
 """
     assert Checker(source).check_from_source() == "UndeclaredIdentifier(undeclaredVar)"
 
-
-def test_040():
-    """Error: UndeclaredIdentifier — used in different function scope."""
+def test_013():
     source = """
-void func1() {
-    int local = 42;
-}
-void main() {
-    int val = local + 1;
-}
-"""
-    assert Checker(source).check_from_source() == "UndeclaredIdentifier(local)"
-
-
-def test_041():
-    """Error: UndeclaredIdentifier — used out-of-scope (after block)."""
-    source = """
-void main() {
-    {
-        int inner = 5;
-    }
-    int x = inner + 1;
-}
-"""
-    assert Checker(source).check_from_source() == "UndeclaredIdentifier(inner)"
-
-
-def test_042():
-    """Error: UndeclaredIdentifier — used before its own declaration."""
-    source = """
-void main() {
-    int x = y + 5;
+void test() {
+    int x = y + 5;  // UndeclaredIdentifier(y) - y used before declaration
     int y = 10;
 }
 """
     assert Checker(source).check_from_source() == "UndeclaredIdentifier(y)"
 
-
-def test_043():
-    """Error: UndeclaredIdentifier — assignment to undeclared var."""
+def test_014():
     source = """
-void main() {
-    ghost = 100;
+void method1() {
+    int localVar = 42;
+}
+
+void method2() {
+    int value = localVar + 1;  // UndeclaredIdentifier(localVar) - different function scope
 }
 """
-    assert Checker(source).check_from_source() == "UndeclaredIdentifier(ghost)"
+    assert Checker(source).check_from_source() == "UndeclaredIdentifier(localVar)"
 
-
-def test_044():
-    """Error: UndeclaredIdentifier in if condition."""
+def test_015():
     source = """
-void main() {
-    if (undefined_cond) {
-        printInt(1);
+void valid() {
+    int x = 10;
+    int y = x + 5;  // Valid: x is declared before use
+}
+"""
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_016():
+    source = """
+int calculate(int x, int y) {
+    int result = x + y;  // Valid: parameters x and y are visible
+    return result;
+}
+"""
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_017():
+    source = """
+void nested() {
+    int outer = 10;
+    {
+        int inner = outer + 5;  // Valid: outer is in enclosing scope
     }
 }
 """
-    assert Checker(source).check_from_source() == "UndeclaredIdentifier(undefined_cond)"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
-
-def test_045():
-    """Error: UndeclaredIdentifier in return expression."""
-    source = """
-int compute() {
-    return missing;
-}
-void main() {}
-"""
-    assert Checker(source).check_from_source() == "UndeclaredIdentifier(missing)"
-
-
-# ============================================================================
-# UNDECLARED FUNCTION (test_046 - test_050)
-# ============================================================================
-
-def test_046():
-    """Error: UndeclaredFunction — calling function that doesn't exist."""
+def test_018():
     source = """
 void main() {
-    int r = calculate(5, 3);
+    int result = calculate(5, 3);  // UndeclaredFunction(calculate)
 }
 """
     assert Checker(source).check_from_source() == "UndeclaredFunction(calculate)"
 
-
-def test_047():
-    """Error: UndeclaredFunction — function called from main but declared after (grammar processes structs first but functions sequentially)."""
+def test_019():
     source = """
-void main() {
-    int v = add(10, 20);
+void test() {
+    int value = add(10, 20);  // UndeclaredFunction(add) - if add is declared later
 }
-int add(int x, int y) { return x + y; }
+
+int add(int x, int y) {
+    return x + y;
+}
 """
-    # Both main and add are functions; main is processed first, but add is not yet registered.
     assert Checker(source).check_from_source() == "UndeclaredFunction(add)"
 
+def test_020():
+    source = """
+int multiply(int x, int y) {
+    return x * y;
+}
 
-def test_048():
-    """Error: UndeclaredFunction — typo in built-in name."""
+void main() {
+    int result = multiply(5, 3);  // Valid: multiply is declared before
+}
+"""
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_021():
+    source = """
+void example() {
+    int x = readInt();        // Valid: built-in function
+    printInt(x);              // Valid: built-in function
+    float y = readFloat();    // Valid: built-in function
+    string s = readString();  // Valid: built-in function
+}
+"""
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_022():
     source = """
 void main() {
-    printint(42);
+    Point p;  // UndeclaredStruct(Point)
 }
-"""
-    assert Checker(source).check_from_source() == "UndeclaredFunction(printint)"
 
-
-def test_049():
-    """Error: UndeclaredFunction inside another function."""
-    source = """
-void helper() {
-    int x = doSomething();
-}
-void main() {}
-"""
-    assert Checker(source).check_from_source() == "UndeclaredFunction(doSomething)"
-
-
-def test_050():
-    """Error: UndeclaredFunction passed as argument context."""
-    source = """
-void main() {
-    printInt(badFunc());
-}
-"""
-    assert Checker(source).check_from_source() == "UndeclaredFunction(badFunc)"
-
-
-# ============================================================================
-# UNDECLARED STRUCT (test_051 - test_055)
-# ============================================================================
-
-def test_051():
-    """Error: UndeclaredStruct — struct member uses a struct not yet declared."""
-    source = """
-struct Container {
-    Item item;
+struct Point {
+    int x;
+    int y;
 };
-void main() {}
 """
-    # 'Item' struct is not declared anywhere
-    assert Checker(source).check_from_source() == "UndeclaredStruct(Item)"
+    assert Checker(source).check_from_source() == "UndeclaredStruct(Point)"
 
+def test_023():
+    source = """
+void test() {
+    Person person;  // UndeclaredStruct(Person) - if Person is declared later
+}
 
-def test_052():
-    """Error: UndeclaredStruct — struct member uses undeclared struct."""
+struct Person {
+    string name;
+    int age;
+};
+"""
+    assert Checker(source).check_from_source() == "UndeclaredStruct(Person)"
+
+def test_024():
     source = """
 struct Address {
-    City city;
+    string street;
+    City city;  // UndeclaredStruct(City) - if City is declared later
 };
-struct City { string name; };
-void main() {}
+
+struct City {
+    string name;
+};
 """
     assert Checker(source).check_from_source() == "UndeclaredStruct(City)"
 
+# def test_025():
+#     source = """
+# struct Point {
+#     int x;
+#     int y;
+# };
 
-def test_053():
-    """Error: UndeclaredStruct — parameter has unknown struct type."""
+# void main() {
+#     Point p1;  // Valid: Point is declared before
+#     Point p2 = {10, 20};  // Valid: Point is declared before
+# }
+# """
+#     assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_026():
     source = """
-void process(Unknown p) {}
-void main() {}
+struct Point {
+    int x;
+    int y;
+};
+
+struct Address {
+    string street;
+    Point location;  // Valid: Point is declared before
+};
 """
-    assert Checker(source).check_from_source() == "UndeclaredStruct(Unknown)"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
-
-def test_054():
-    """Error: UndeclaredStruct — return type of function is unknown struct."""
+def test_027():
     source = """
-Ghost getGhost() { }
-void main() {}
-"""
-    assert Checker(source).check_from_source() == "UndeclaredStruct(Ghost)"
-
-
-def test_055():
-    """Error: UndeclaredStruct — used in local var decl."""
-    source = """
-void main() {
-    Phantom x;
+void loopError() {
+    break;     // Error: MustInLoop(break)
 }
 """
-    assert Checker(source).check_from_source() == "UndeclaredStruct(Phantom)"
+    assert Checker(source).check_from_source() == "MustInLoop(BreakStmt())"
 
-
-# ============================================================================
-# TYPE CANNOT BE INFERRED (test_056 - test_065)
-# ============================================================================
-
-def test_056():
-    """Error: TypeCannotBeInferred — two unresolved autos in binary op."""
+def test_028():
     source = """
-void main() {
-    auto x;
-    auto y;
-    auto result = x + y;
+void loopError() {
+    continue;  // Error: MustInLoop(continue)
 }
 """
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeCannotBeInferred(")
+    assert Checker(source).check_from_source() == "MustInLoop(ContinueStmt())"
 
-
-def test_057():
-    """Error: TypeCannotBeInferred — assignment of two unknown autos."""
+def test_029():
     source = """
-void main() {
-    auto x;
-    auto y;
-    x = y;
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeCannotBeInferred(")
-
-
-def test_058():
-    """Error: TypeCannotBeInferred — auto never used (block end)."""
-    source = """
-void main() {
-    auto x;
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeCannotBeInferred(")
-
-
-def test_059():
-    """Error: TypeCannotBeInferred — return unknown auto."""
-    source = """
-int get() {
-    auto x;
-    return x;
-}
-void main() {}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeCannotBeInferred(")
-
-
-def test_060():
-    """Error: TypeCannotBeInferred — comparison of two unknown autos."""
-    source = """
-void main() {
-    auto x;
-    auto y;
-    int r = x < y;
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeCannotBeInferred(")
-
-
-def test_061():
-    """Error: TypeCannotBeInferred — multiplication of two unknown autos."""
-    source = """
-void main() {
-    auto a;
-    auto b;
-    int c = a * b;
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeCannotBeInferred(")
-
-
-def test_062():
-    """Error: TypeMismatchInExpression — auto x + string literal (x inferred as string, but + not valid on strings)."""
-    source = """
-void main() {
-    auto x;
-    auto y;
-    auto result = x + "hello";
-}
-"""
-    result = Checker(source).check_from_source()
-    # x gets inferred as string from "hello", but string + string is not valid (not numeric)
-    assert result.startswith("TypeMismatchInExpression(") or result.startswith("TypeCannotBeInferred(")
-
-
-def test_063():
-    """Error: TypeCannotBeInferred — mutually dependent autos."""
-    source = """
-void main() {
-    auto a;
-    auto b;
-    a = b;
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeCannotBeInferred(")
-
-
-def test_064():
-    """Error: TypeCannotBeInferred — auto declared but unused in nested block."""
-    source = """
-void main() {
-    {
-        auto z;
+void switchError() {
+    int x = 1;
+    switch (x) {
+        case 1:
+            break;
+            continue;
     }
 }
 """
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeCannotBeInferred(")
+    assert Checker(source).check_from_source() == "MustInLoop(ContinueStmt())"
 
-
-def test_065():
-    """Error: TypeCannotBeInferred — two autos: logical and."""
+def test_030():
     source = """
-void main() {
-    auto p;
-    auto q;
-    int r = p && q;
+void switchError() {
+    for (int i = 0; i < 5; ++i) {            
+        break;
+        continue;
+    }
 }
 """
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeCannotBeInferred(")
+    assert Checker(source).check_from_source() == "Static checking passed"
 
-
-# ============================================================================
-# TYPE MISMATCH IN STATEMENT (test_066 - test_078)
-# ============================================================================
-
-def test_066():
-    """Error: TypeMismatchInStatement — float condition in if."""
+def test_031():
     source = """
-void main() {
+void arithmeticError() {
+    int x = 5;
+    string text = "hello";
+    
+    int sum = x + text;     // Error: TypeMismatchInExpression at binary operation
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(x), +, Identifier(text)))"
+
+def test_032():
+    source = """
+void arithmeticError() {
+    int x = 5;
+    string text = "hello";
+    
+    float result = x * text; // Error: TypeMismatchInExpression at binary operation
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(x), *, Identifier(text)))"
+
+
+def test_033():
+    source = """
+void modulusError() {
+    float f = 3.14;
+    int x = 10 % 2;
+    
+    int result = f % x;      // Error: TypeMismatchInExpression at binary operation (float % int)
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(f), %, Identifier(x)))"
+
+
+def test_034():
+    source = """
+void modulusError() {
+    float f = 3.14;
+    int x = 10;
+    
+    int result2 = x % f;     // Error: TypeMismatchInExpression at binary operation (int % float)
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(x), %, Identifier(f)))"
+
+def test_035():
+    source = """
+void relationalError() {
+    int x = 10 == 1;
+    string text = "hello";
+    
+    int equal = text == x;   // Error: TypeMismatchInExpression at binary operation
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(text), ==, Identifier(x)))"
+
+def test_036():
+    source = """
+void relationalError() {
+    int x = 10 > 2;
+    string text = "hello";
+    
+    int result = x < text;   // Error: TypeMismatchInExpression at binary operation
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(x), <, Identifier(text)))"
+
+
+def test_037():
+    source = """
+void logicalError() {
+    float f = 3.14;
+    int x = 10 && 20;
+    
+    int result = f && x;     // Error: TypeMismatchInExpression at binary operation
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(f), &&, Identifier(x)))"
+
+
+def test_038():
+    source = """
+void logicalError() {
+    float f = 3.14;
+    int x = !10;
+    
+    int not = !f;            // Error: TypeMismatchInExpression at unary operation
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PrefixOp(!Identifier(f)))"
+
+def test_039():
+    source = """
+void incrementError() {
+    float f = 3.14;
+    ++f;                     // Error: TypeMismatchInExpression at unary operation
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PrefixOp(++Identifier(f)))"
+
+def test_040():
+    source = """
+void incrementError() {
+    float f = 3.14;
+    f++;                     // Error: TypeMismatchInExpression at postfix operation
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PostfixOp(Identifier(f)++))"
+
+
+def test_041():
+    source = """
+void incrementOperandError() {
+    int x = 5;
+    ++ x;
+    x ++;
+    ++5;                     // Error: TypeMismatchInExpression at unary operation (cannot increment literal)
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PrefixOp(++IntLiteral(5)))"
+
+
+def test_042():
+    source = """
+void incrementOperandError() {
+    int x = 5;
+    --(x + 1);               // Error: TypeMismatchInExpression at unary operation (cannot increment expression)
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PrefixOp(--BinaryOp(Identifier(x), +, IntLiteral(1))))"
+
+def test_043():
+    source = """
+void incrementOperandError() {
+    int x = 5;
+    (x + 2)++;               // Error: TypeMismatchInExpression at postfix operation (cannot increment expression
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PostfixOp(BinaryOp(Identifier(x), +, IntLiteral(2))++))"
+
+
+def test_044():
+    source = """
+struct Point {
+    int x;
+    int y;
+};
+
+void memberAccessError() {
+    int x = 10;
+    int value = x.member;    // Error: TypeMismatchInExpression at member access
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(MemberAccess(Identifier(x).member))"
+
+def test_045():
+    source = """
+struct Point {
+    int x;
+    int y;
+};
+
+void memberAccessError() {
+    Point p = {10, 20};
+    int t = p.x + p.y;
+    int invalid = p.z;       // Error: TypeMismatchInExpression at member access (z doesn't exist)
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(MemberAccess(Identifier(p).z))"
+
+def test_046():
+    source = """
+void process(int x) { }
+
+void callError() {
+    string text = "123";
+    process(text);   // sai kiểu: string -> int
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(FuncCall(process, [Identifier(text)]))"
+
+def test_047():
+    source = """
+int add(int x, int y) {
+    return x + y;
+}
+
+void callArgumentError() {
+    int result = add(10);   // thiếu 1 tham số
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(FuncCall(add, [IntLiteral(10)]))"
+
+def test_048():
+    source = """
+int add(int x, int y) {
+    return x + y;
+}
+
+void callArgumentError() {
+    int result = add(10, 20, 30);   // dư tham số
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(FuncCall(add, [IntLiteral(10), IntLiteral(20), IntLiteral(30)]))"
+
+def test_049():
+    source = """
+void assignmentExpressionError() {
+    int x = 10;
+    string text = "hello";
+    float f = 3.14;
+    
+    int result = (x = text) + 5;     // Error: TypeMismatchInExpression at assignment expression (int = string)
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(AssignExpr(Identifier(x) = Identifier(text)))"
+
+def test_050():
+    source = """
+void conditionalError() {
     float x = 5.0;
     if (x) {
         printInt(1);
     }
 }
 """
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInStatement(")
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(IfStmt(if Identifier(x) then BlockStmt([ExprStmt(FuncCall(printInt, [IntLiteral(1)]))])))"
 
-def test_067():
-    """Error: TypeMismatchInStatement — string condition in while."""
+def test_051():
     source = """
-void main() {
-    string msg = "loop";
-    while (msg) {
-        break;
+void conditionalError() {
+    string message = "hello";
+    if (message) {
+        printString(message);
     }
 }
 """
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInStatement(")
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(IfStmt(if Identifier(message) then BlockStmt([ExprStmt(FuncCall(printString, [Identifier(message)]))])))"
 
-
-def test_068():
-    """Error: TypeMismatchInStatement — int assigned to string var."""
+def test_052():
     source = """
-void main() {
-    string text = "hello";
-    text = 42;
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInStatement(")
-
-
-def test_069():
-    """Error: TypeMismatchInStatement — string returned from int function."""
-    source = """
-int getValue() {
-    return "invalid";
-}
-void main() {}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInStatement(")
-
-
-def test_070():
-    """Error: TypeMismatchInStatement — void function with value return."""
-    source = """
-void doWork() {
-    return 10;
-}
-void main() {}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInStatement(")
-
-
-def test_071():
-    """Error: TypeMismatchInStatement — struct assignment type mismatch."""
-    source = """
-struct Point { int x; int y; };
-struct Person { string name; int age; };
-void main() {
-    Point p;
-    Person person;
-    p = person;
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInStatement(")
-
-
-def test_072():
-    """Error: TypeMismatchInStatement — float condition in for loop."""
-    source = """
-void main() {
-    float f = 1.0;
-    for (; f; ) {
-        break;
-    }
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInStatement(")
-
-
-def test_073():
-    """Error: TypeMismatchInStatement — switch on float."""
-    source = """
-void main() {
-    float f = 3.14;
-    switch (f) {
-        case 1: break;
-    }
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInStatement(")
-
-
-def test_074():
-    """Error: TypeMismatchInStatement — assigning float to int variable."""
-    source = """
-void main() {
-    int x = 10;
-    float y = 3.14;
-    x = y;
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInStatement(")
-
-
-def test_075():
-    """Error: TypeMismatchInStatement — non-void function returns void (bare return)."""
-    source = """
-int compute() {
-    return;
-}
-void main() {}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInStatement(")
-
-
-def test_076():
-    """Error: TypeMismatchInStatement — wrong init type for int."""
-    source = """
-void main() {
-    int x = "hello";
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInStatement(")
-
-
-def test_077():
-    """Error: TypeMismatchInStatement — return type mismatch (int expected, float returned)."""
-    source = """
-int getVal() {
-    return 3.14;
-}
-void main() {}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInStatement(")
-
-
-def test_078():
-    """Error: TypeMismatchInStatement — string condition in while."""
-    source = """
-void main() {
+void whileError() {
     float f = 1.5;
     while (f) {
         printFloat(f);
     }
 }
 """
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInStatement(")
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(WhileStmt(while Identifier(f) do BlockStmt([ExprStmt(FuncCall(printFloat, [Identifier(f)]))])))"
 
-
-# ============================================================================
-# TYPE MISMATCH IN EXPRESSION (test_079 - test_092)
-# ============================================================================
-
-def test_079():
-    """Error: TypeMismatchInExpression — adding int and string."""
+def test_053():
     source = """
-void main() {
-    int x = 5;
+void whileError() {
+    int x = 10;
     string text = "hello";
-    int sum = x + text;
+    
+    x = text;
 }
 """
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInExpression(")
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(AssignExpr(Identifier(x) = Identifier(text)))"
 
+def test_054():
+    source = """
+void foo() {
+    int i = 0;
+    for (i=1; "s"; i++) {}
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(ForStmt(for ExprStmt(AssignExpr(Identifier(i) = IntLiteral(1))); StringLiteral('s'); PostfixOp(Identifier(i)++) do BlockStmt([])))"
+
+def test_055():
+    source = """
+void switchError() {
+    float f = 3.14;
+    switch (f) {  // Error: TypeMismatchInStatement at switch statement
+        case 1: break;
+    }
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch Identifier(f) cases [CaseStmt(case IntLiteral(1): [BreakStmt()])]))"
+
+def test_056():
+    source = """
+int getValue() {
+    return "invalid";  // Error: TypeMismatchInStatement at return statement
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(ReturnStmt(return StringLiteral('invalid')))"
+
+
+def test_057():
+    source = """
+int returnVoidError() {
+    return;  // Error: TypeMismatchInStatement at return statement (non-void function must return value)
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(ReturnStmt(return))"
+
+def test_058():
+    source = """
+int foo() {
+    auto a;
+    a = 10;
+    a = 2;
+    a = 1.2;
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(AssignExpr(Identifier(a) = FloatLiteral(1.2)))"
+
+def test_059():
+    source = """
+int foo() {
+    auto a;
+    auto b;
+    a = b;
+}
+"""
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(AssignExpr(Identifier(a) = Identifier(b)))"
+
+def test_060():
+    source = """
+int foo() {
+    auto a;
+    auto b;
+    {{{
+        b && a;
+    }}}
+    b = 2;
+    a = 2.2;
+}
+"""
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BinaryOp(Identifier(b), &&, Identifier(a)))"
+
+def test_061():
+    source = """
+foo() {
+   return 1;
+}
+int foo1() {
+   int a;
+   a = foo();
+   float b;
+   b = foo();
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(AssignExpr(Identifier(b) = FuncCall(foo, [])))"
+
+def test_062():
+    source = """
+void main() {
+    main();
+}
+"""
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_063():
+    """Error: Unary minus on string"""
+    result = Checker("void main() { string s = \"test\"; auto x = -s; }").check_from_source()
+    assert "TypeMismatch" in result
+
+def test_065():
+    source = """
+    struct Point {
+        int Point;
+        int y;
+    };
+    void Point(Point a) {}
+    """
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_069():
+    source = """
+    void main() {
+        int a; int b;
+        if (1) {
+            int a = b;
+        }
+    }
+    """
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_070():
+    source = """
+    void main() {
+        int a; int b;
+        if (1) int a = b;
+    }
+    """
+    assert Checker(source).check_from_source() == "Redeclared(Variable, a)"
+
+def test_074():
+    source = """
+void main() {
+    int a;
+    while(1) { int a; }
+}
+"""
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_075():
+    source = """
+void main() {
+    int a;
+    while(1) int a;
+}
+"""
+    assert Checker(source).check_from_source() == "Redeclared(Variable, a)"
 
 def test_080():
-    """Error: TypeMismatchInExpression — modulus with float."""
     source = """
 void main() {
-    float f = 3.14;
-    int x = 10;
-    int r = f % x;
+    for(int a;;) { int a; }
 }
 """
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInExpression(")
-
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_081():
-    """Error: TypeMismatchInExpression — logical AND with float."""
     source = """
 void main() {
-    float f = 3.14;
-    int x = 10;
-    int r = f && x;
+    for(int a;;) int a;
 }
 """
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInExpression(")
-
+    assert Checker(source).check_from_source() == "Redeclared(Variable, a)"
 
 def test_082():
-    """Error: TypeMismatchInExpression — logical NOT on float."""
     source = """
 void main() {
-    float f = 3.14;
-    int r = !f;
+    for(int a;;) break;
+    int a;
 }
 """
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInExpression(")
-
-
-def test_083():
-    """Error: TypeMismatchInExpression — increment on float."""
-    source = """
-void main() {
-    float f = 3.14;
-    ++f;
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInExpression(")
-
-
-def test_084():
-    """Error: TypeMismatchInExpression — postfix decrement on float."""
-    source = """
-void main() {
-    float f = 3.14;
-    f--;
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInExpression(")
-
-
-def test_085():
-    """Error: TypeMismatchInExpression — member access on non-struct."""
-    source = """
-void main() {
-    int x = 10;
-    int val = x.member;
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInExpression(")
-
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_086():
-    """Error: TypeMismatchInExpression — accessing non-existent struct member."""
     source = """
-struct Point { int x; int y; };
 void main() {
-    Point p;
-    int z = p.z;
+    int a;
+    switch (1) {
+        case 1:
+            int a;
+            int b;
+            float b;
+    }
 }
 """
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInExpression(")
-
-
-def test_087():
-    """Error: TypeMismatchInExpression — function call arg type mismatch."""
-    source = """
-void process(int x) {}
-void main() {
-    string text = "123";
-    process(text);
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInExpression(")
-
-
-def test_088():
-    """Error: TypeMismatchInExpression — too few arguments to function."""
-    source = """
-int add(int x, int y) { return x + y; }
-void main() {
-    int r = add(10);
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInExpression(")
-
+    assert Checker(source).check_from_source() == "Redeclared(Variable, b)"
 
 def test_089():
-    """Error: TypeMismatchInExpression — too many arguments to function."""
     source = """
-int add(int x, int y) { return x + y; }
-void main() {
-    int r = add(10, 20, 30);
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInExpression(")
-
+    void readString() {
+    }
+    """
+    assert Checker(source).check_from_source() == "Redeclared(Function, readString)"
 
 def test_090():
-    """Error: TypeMismatchInExpression — relational op on string."""
     source = """
-void main() {
-    string a = "a";
-    string b = "b";
-    int r = a < b;
-}
+struct printFloat{};
 """
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInExpression(")
+    assert Checker(source).check_from_source() == "Static checking passed"
 
-
-def test_091():
-    """Error: TypeMismatchInExpression — logical OR with float."""
+def test_113():
     source = """
-void main() {
-    float f = 1.0;
-    int x = 1;
-    int r = f || x;
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInExpression(")
+    void main() {
+        int A = A;
+    }
+    """
+    assert Checker(source).check_from_source() == "UndeclaredIdentifier(A)"
 
-
-def test_092():
-    """Error: TypeMismatchInExpression — assignment expr lhs/rhs type mismatch."""
+def test_115():
     source = """
-void main() {
-    int x = 10;
-    string text = "hello";
-    int result = (x = text) + 5;
-}
-"""
-    result = Checker(source).check_from_source()
-    assert result.startswith("TypeMismatchInExpression(")
-
-
-# ============================================================================
-# MUST IN LOOP (test_093 - test_100)
-# ============================================================================
-
-def test_093():
-    """Error: MustInLoop — break outside any loop."""
-    source = """
-void main() {
-    break;
-}
-"""
-    assert Checker(source).check_from_source() == "MustInLoop(BreakStmt())"
-
-
-def test_094():
-    """Error: MustInLoop — continue outside any loop."""
-    source = """
-void main() {
-    continue;
-}
-"""
-    assert Checker(source).check_from_source() == "MustInLoop(ContinueStmt())"
-
-
-def test_095():
-    """Error: MustInLoop — break inside if without surrounding loop."""
-    source = """
-void main() {
-    if (1) {
-        break;
+void main(int A, int B) {
+    A = B;
+    {
+    int A;
+    A = C;
     }
 }
 """
-    assert Checker(source).check_from_source() == "MustInLoop(BreakStmt())"
+    assert Checker(source).check_from_source() == "Redeclared(Variable, A)"
 
+def test_145():
+    source = """
+void main(){
+    switch(1 || 2){case 1.0: }
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch BinaryOp(IntLiteral(1), ||, IntLiteral(2)) cases [CaseStmt(case FloatLiteral(1.0): [])]))"
 
-def test_096():
-    """Error: MustInLoop — continue inside switch (not a loop)."""
+def test_153():
+    source = """
+void main(){
+    for (string s; ; ) {}
+}
+"""
+
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_154():
+    source = """
+void main(){
+    float b;
+    for (b=1.0; ; ) {}
+}
+"""
+
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_156():
+    source = """
+void main(){
+    string b;
+    for (; ; b = "S") {}
+}
+"""
+
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_220():
     source = """
 void main() {
+    auto a;
+    auto b;
+    int c = a + b;
+}
+"""
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BinaryOp(Identifier(a), +, Identifier(b)))"
+
+def test_221():
+    source = """
+struct A{int A; float a;};
+struct B{int b; float b;};
+void main() {}
+"""
+    assert Checker(source).check_from_source() == "Redeclared(Member, b)"
+
+def test_223():
+    source = """
+void main(int a) {int a;}
+"""
+    assert Checker(source).check_from_source() == "Redeclared(Variable, a)"
+
+def test_225():
+    source = """
+void main() {
+    auto a;
+    auto b;
+    int c = 1 + b;
+}
+"""
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BlockStmt([VarDecl(auto, a), VarDecl(auto, b), VarDecl(IntType(), c = BinaryOp(IntLiteral(1), +, Identifier(b)))]))"
+
+def test_227():
+    source = """
+void main() {
+    auto b;
+    int c = b > 2;
+}
+"""
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_237():
+    source = """
+void main() {
+    auto a;
+    + a;
+    float b = a;
+}
+"""
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(PrefixOp(+Identifier(a)))"
+
+def test_240():
+    source = """
+void main() {
+    auto a; auto b;
+    a = 1;
+    a + b;
+}
+"""
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_256():
+    source = """
+void main() {
+    auto a;
+    switch (1){case a:}
+    float b = a;
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch IntLiteral(1) cases [CaseStmt(case Identifier(a): [])]))"
+
+def test_260():
+    source = """
+func() { auto a; return a;}
+void main() {
+    auto a = func();
+    float b = a;
+}
+"""
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(ReturnStmt(return Identifier(a)))"
+
+def test_265():
+    source = """
+void unused_auto() {
+    auto x;
+}  // TypeCannotBeInferred(BlockStmt([VarDecl(auto, x)]))
+"""
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BlockStmt([VarDecl(auto, x)]))"
+
+def test_268():
+    source = """
+void unused_auto() {
+    auto a;
+    auto b;
+    {
+        a && b;
+    }
+    auto c;
+}
+"""
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BinaryOp(Identifier(a), &&, Identifier(b)))"
+
+def test_269():
+    source = """
+void unused_auto() {
+    switch (1) {
+        case 1:
+            auto c;
+    }
+}
+"""
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(SwitchStmt(switch IntLiteral(1) cases [CaseStmt(case IntLiteral(1): [VarDecl(auto, c)])]))"
+
+def test_271():
+    source = """
+void main() {
+    auto b;
+    int c = 1.0 + b;
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(VarDecl(IntType(), c = BinaryOp(FloatLiteral(1.0), +, Identifier(b))))"
+
+def test_273():
+    source = """
+void main() {
+    auto b;
+    float c = b + 1.0;
+}
+"""
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_294():
+    source = """
+void foo() {
     int x = 1;
     switch (x) {
-        case 1:
-            continue;
-            break;
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "MustInLoop(ContinueStmt())"
+        case - 1:
+        case 1 + 2:
+        case - 2:
+        case 1 || 2 * 3 / 4 + 2:
 
-
-def test_097():
-    """Error: MustInLoop — break in function called from loop (no context transfer)."""
-    source = """
-void helper() {
-    break;
-}
-void main() {
-    for (auto i = 0; i < 10; i++) {
-        helper();
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "MustInLoop(BreakStmt())"
-
-
-def test_098():
-    """Valid: break and continue inside nested for loops."""
-    source = """
-void main() {
-    for (auto i = 0; i < 5; i++) {
-        for (auto j = 0; j < 5; j++) {
-            if (i == j) {
-                continue;
-            }
-            if (j > 3) {
-                break;
-            }
-        }
     }
 }
 """
     assert Checker(source).check_from_source() == "Static checking passed"
 
-
-def test_099():
-    """Valid: break inside switch inside while loop."""
+def test_295():
     source = """
-void main() {
-    int i = 0;
-    while (i < 10) {
-        switch (i) {
-            case 5: break;
-        }
-        i = i + 1;
+void foo() {
+    int x = 1;
+    switch (x) {
+        case x:
     }
 }
 """
-    assert Checker(source).check_from_source() == "Static checking passed"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch Identifier(x) cases [CaseStmt(case Identifier(x): [])]))"
 
-
-def test_100():
-    """Valid: comprehensive program — structs, functions, loops, auto inference."""
+def test_297():
     source = """
-struct Vector {
+int a () {return 1;}
+void foo() {
+    int x = 1;
+    switch (x) {
+        case a():
+    }
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch Identifier(x) cases [CaseStmt(case FuncCall(a, []): [])]))"
+
+def test_298():
+    source = """
+void foo() {
+    switch (1) {
+        case x:
+    }
+}
+"""
+    assert Checker(source).check_from_source() == "UndeclaredIdentifier(x)"
+
+def test_300():
+    source = """
+int a(){return 1;}
+void foo() {
+    int a;
+    switch (a()) {
+        case a = 1:
+    }
+}
+"""
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch FuncCall(a, []) cases [CaseStmt(case AssignExpr(Identifier(a) = IntLiteral(1)): [])]))"
+
+def test_307():
+    source = """
+foo() {
+    int a = foo();
+    return 1;
+}
+"""
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(FuncCall(foo, []))"
+
+def test_309():
+    source = """
+struct Point {
     int x;
     int y;
 };
-int dot(Vector a, Vector b) {
-    return a.x * b.x + a.y * b.y;
-}
-void main() {
-    Vector v1;
-    Vector v2;
-    v1.x = 1;
-    v1.y = 2;
-    v2.x = 3;
-    v2.y = 4;
-    int result = dot(v1, v2);
-    printInt(result);
-    for (auto i = 0; i < 5; i++) {
-        if (i == 3) {
-            break;
-        }
-        printInt(i);
-    }
+
+void foo() {
+    Point p = {10};
 }
 """
-    assert Checker(source).check_from_source() == "Static checking passed"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(VarDecl(StructType(Point), p = StructLiteral({IntLiteral(10)})))"

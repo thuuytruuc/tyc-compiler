@@ -355,6 +355,9 @@ class StaticChecker(ASTVisitor):
                 if not types_equal(declared_type, init_type):
                     raise TypeMismatchInStatement(node)
 
+            elif init_type is None and isinstance(node.init_value, FuncCall):
+                raise TypeCannotBeInferred(node.init_value)
+
         # For StructLiteral initializer of struct type: verify member counts
         if node.init_value is not None and isinstance(node.init_value, StructLiteral):
             if isinstance(declared_type, StructType):
@@ -446,24 +449,41 @@ class StaticChecker(ASTVisitor):
         o["in_switch"] = True
         # in_loop stays as-is: break is allowed in switch; continue still needs loop
 
+        o["var_scopes"].append({})
+        o["unresolved_autos"] = set()
         for case in node.cases:
+            # Case label must be an integer literal, not just any int-typed expression
+            case_type = case.expr.accept(self, o)
+            is_const = self._is_constant_expr(case.expr)
+            if not isinstance(case_type, IntType) or not is_const:
+                raise TypeMismatchInStatement(node)  # node = SwitchStmt
             case.accept(self, o)
         if node.default_case:
             node.default_case.accept(self, o)
+        
+        block_scope = o["var_scopes"][-1]
+        for name in o["unresolved_autos"]:
+            if name in block_scope and block_scope[name] is None:
+                raise TypeCannotBeInferred(node)
 
         o["in_loop"]   = old_in_loop
         o["in_switch"] = old_in_switch
+        o["var_scopes"].pop()
 
     def visit_case_stmt(self, node: CaseStmt, o: Any = None):
-        # case expression must be int
-        case_type = node.expr.accept(self, o)
-        if not isinstance(case_type, IntType):
-            raise TypeMismatchInStatement(node)
+        # Label validation (IntLiteral only) is done in visit_switch_stmt.
+        # Here we only visit the body statements.
+        unresolved_autos = o["unresolved_autos"]
         for stmt in node.statements:
+            if isinstance(stmt, VarDecl) and stmt.var_type is None and stmt.init_value is None:
+                unresolved_autos.add(stmt.name)
             stmt.accept(self, o)
 
     def visit_default_stmt(self, node: DefaultStmt, o: Any = None):
+        unresolved_autos = o["unresolved_autos"]
         for stmt in node.statements:
+            if isinstance(stmt, VarDecl) and stmt.var_type is None and stmt.init_value is None:
+                unresolved_autos.add(stmt.name)
             stmt.accept(self, o)
 
     # ------------------------------------------------------------------
@@ -518,7 +538,7 @@ class StaticChecker(ASTVisitor):
                 node.expr.accept(self, o)
             except TypeMismatchInExpression:
                 # Assignment at statement level is a statement error
-                raise TypeMismatchInStatement(node)
+                raise TypeMismatchInStatement(node.expr)
         else:
             node.expr.accept(self, o)
 
@@ -616,10 +636,12 @@ class StaticChecker(ASTVisitor):
 
         elif op in ("+", "-"):
             operand_type = node.operand.accept(self, o)
+            if operand_type is None:
+                raise TypeCannotBeInferred(node)
+
             if not is_numeric(operand_type):
                 raise TypeMismatchInExpression(node)
             return operand_type
-
         return None
 
     def visit_postfix_op(self, node: PostfixOp, o: Any = None) -> Optional[Type]:
@@ -762,3 +784,15 @@ class StaticChecker(ASTVisitor):
             if name in scope:
                 scope[name] = typ
                 return
+
+    def _is_constant_expr(self, expr: Expr) -> bool:
+        """Recursively check if an expression is a compile-time constant."""
+        if isinstance(expr, IntLiteral):
+            return True
+        if isinstance(expr, PrefixOp):
+            return self._is_constant_expr(expr.operand)
+        if isinstance(expr, BinaryOp):
+            return self._is_constant_expr(expr.left) and self._is_constant_expr(expr.right)
+        
+        # If it's an Identifier, FuncCall, AssignExpr, etc., it is NOT constant.
+        return False
