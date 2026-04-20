@@ -136,7 +136,7 @@ unary operations, binary operations following operator precedence,
 function calls, and postfix operations (increment/decrement)
 */
 list_expression: expression COMMA list_expression | expression;
-expression  : element ASSIGN expression | expression1 ;
+expression  : ((element | INT_LIT | FLOAT_LIT) ASSIGN expression) | expression1 ;
 expression1 : expression1 OR expression2 | expression2 ;
 expression2 : expression2 AND expression3 | expression3 ;
 expression3 : expression3 (EQ | NEQ) expression4 | expression4 ;

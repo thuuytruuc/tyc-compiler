@@ -16,7 +16,6 @@ from typing import (
 )
 from ..utils.visitor import ASTVisitor
 from ..utils.nodes import (
-    ASTNode,
     Program,
     StructDecl,
     MemberDecl,
@@ -131,9 +130,11 @@ class StaticChecker(ASTVisitor):
     # ------------------------------------------------------------------
 
     def check(self, ast: Program) -> str:
-        """External entry point. Returns 'Static checking passed' or raises StaticError."""
         ast.accept(self)
         return "Static checking passed"
+
+    def check_program(self, ast: Program) -> str:
+        return self.check(ast)
 
     # ------------------------------------------------------------------
     # Program
@@ -532,13 +533,18 @@ class StaticChecker(ASTVisitor):
     # ------------------------------------------------------------------
 
     def visit_expr_stmt(self, node: ExprStmt, o: Any = None):
-        # Top-level assignment-as-statement: type mismatch -> TypeMismatchInStatement
         if isinstance(node.expr, AssignExpr):
-            try:
+            # If lhs is illegal (not ID or MemAccess) -> visit_assign_expr
+            lhs_type = node.expr.lhs
+            if not isinstance(lhs_type, (Identifier, MemberAccess)):
                 node.expr.accept(self, o)
-            except TypeMismatchInExpression:
-                # Assignment at statement level is a statement error
-                raise TypeMismatchInStatement(node.expr)
+                
+            # If lhs is legal, type mismatches become statement errors
+            else:
+                try:
+                    node.expr.accept(self, o)
+                except TypeMismatchInExpression:
+                    raise TypeMismatchInStatement(node.expr)    
         else:
             node.expr.accept(self, o)
 

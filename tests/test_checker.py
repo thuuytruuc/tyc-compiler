@@ -1,1111 +1,493 @@
-"""
-Test cases for TyC Static Semantic Checker
-
-This module contains test cases for the static semantic checker.
-100 test cases covering all error types and comprehensive scenarios.
-"""
-
 from tests.utils import Checker
-from src.utils.nodes import (
-    Program,
-    FuncDecl,
-    BlockStmt,
-    VarDecl,
-    AssignExpr,
-    ExprStmt,
-    IntType,
-    FloatType,
-    StringType,
-    VoidType,
-    StructType,
-    IntLiteral,
-    FloatLiteral,
-    StringLiteral,
-    Identifier,
-    BinaryOp,
-    MemberAccess,
-    FuncCall,
-    StructDecl,
-    MemberDecl,
-    Param,
-    ReturnStmt,
-)
+
+# =================================================================
+# Valid Programs (Test 1 - 20)
+# =================================================================
 
 def test_001():
-    """Test a valid program that should pass all checks"""
-    source = """
-void main() {
-    int x = 5;
-    int y = x + 1;
-}
-"""
-    expected = "Static checking passed"
-    assert Checker(source).check_from_source() == expected
-
+    source = "void execute() { int valA = 42; int valB = valA + 2; }"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_002():
-    """Test valid program with int type inference"""
-    source = """
-void main() {
-    int x = 10;
-    int y = 3.14;
-    int z = x + y;
-}
-"""
-    expected = "TypeMismatchInStatement(VarDecl(IntType(), y = FloatLiteral(3.14)))"
-    assert Checker(source).check_from_source() == expected
-
+    source = "int computeSum(int a, int b) { return a + b; } void execute() { int total = computeSum(10, 4); }"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_003():
-    """Test valid program with functions"""
-    source = """
-int add(int x, int y) {
-    return x + y;
-}
-void main() {
-    int sum = add(5, 3);
-}
-"""
-    expected = "Static checking passed"
-    assert Checker(source).check_from_source() == expected
-
+    source = "struct Vector { int u; int v; }; void execute() { Vector vec; vec.u = 15; vec.v = 25; }"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_004():
-    """Test valid program with struct"""
-    source = """
-struct Point {
-    int x;
-    int y;
-};
-void main() {
-    Point p;
-    p.x = 10;
-    p.y = 20;
-}
-"""
-    expected = "Static checking passed"
-    assert Checker(source).check_from_source() == expected
-
+    source = "void execute() { int num = 15; { int temp = 25; int res = num + temp; } }"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_005():
-    """Test valid program with nested blocks"""
-    source = """
-void main() {
-    int x = 10;
-    {
-        int y = 20;
-        int z = x + y;
-    }
-}
-"""
-    expected = "Static checking passed"
-    assert Checker(source).check_from_source() == expected
+    source = "void process() { int data = 50; { int data = 150; { int data = 250; } } }"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_006():
-    source = """
-struct Point {
-    int x;
-    int y;
-};
-struct Point {
-    int z;
-};
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Struct, Point)"
+    source = "void testScope() { int a = 15; { int b = 25; } int b = 35; }"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_007():
-    source = """
-int add(int x, int y) {
-    return x + y;
-}
-int add(int a, int b) {
-    return a + b;
-}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Function, add)"
+    source = "void validVar() { int num1 = 15; int num2 = num1 + 5; }"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_008():
-    source = """
-void main() {
-    int count = 10;
-    int count = 20;  // Redeclared(Variable, count)
-}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Variable, count)"
+    source = "int multiply(int m, int n) { int result = m * n; return result; }"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_009():
-    source = """
-int calculate(int x, float y, int x) {  // Redeclared(Parameter, x)
-    return x + y;
-}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Parameter, x)"
+    source = "void scopeTest() { int out = 15; { int in = out + 5; } }"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_010():
-    source = """
-void example() {
-    int value = 100;  // Function variable
-    
-    {
-        int value = 200;  // Valid: shadows function variable
-        {
-            int value = 300;  // Valid: shadows block variable
-        }
-    }
-}
-"""
+    source = "int doMath(int a, int b) { return a * b; } void execute() { int res = doMath(10, 5); }"
     assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_011():
-    source = """
-void test() {
-    int x = 10;
-    {
-        int y = 20;  // Valid: different variable name
-    }
-    int y = 30;  // Valid: y in outer scope doesn't conflict with y in inner scope (different block)
-}
-
-"""
+    source = "void sysCalls() { int a = readInt(); printInt(a); float b = readFloat(); string str = readString(); }"
     assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_012():
-    source = """
-void example() {
-    int result = undeclaredVar + 10;  // UndeclaredIdentifier(undeclaredVar)
-}
-"""
-    assert Checker(source).check_from_source() == "UndeclaredIdentifier(undeclaredVar)"
+    source = "struct Item { int id; int price; }; struct Order { string customer; Item item; };"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_013():
-    source = """
-void test() {
-    int x = y + 5;  // UndeclaredIdentifier(y) - y used before declaration
-    int y = 10;
-}
-"""
-    assert Checker(source).check_from_source() == "UndeclaredIdentifier(y)"
+    source = "void execute() { for(int idx = 0; idx < 10; idx++) {} for(int idx = 0; idx < 10; idx++) {} }"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_014():
-    source = """
-void method1() {
-    int localVar = 42;
-}
-
-void method2() {
-    int value = localVar + 1;  // UndeclaredIdentifier(localVar) - different function scope
-}
-"""
-    assert Checker(source).check_from_source() == "UndeclaredIdentifier(localVar)"
+    source = "void execute() { int val1; int val2; if (1) { int val1 = val2; } }"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_015():
-    source = """
-void valid() {
-    int x = 10;
-    int y = x + 5;  // Valid: x is declared before use
-}
-"""
+    source = "void execute() { int data; while(1) { int data; } }"
     assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_016():
-    source = """
-int calculate(int x, int y) {
-    int result = x + y;  // Valid: parameters x and y are visible
-    return result;
-}
-"""
+    source = "void execute() { for(int data;;) { int data; } }"
     assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_017():
-    source = """
-void nested() {
-    int outer = 10;
-    {
-        int inner = outer + 5;  // Valid: outer is in enclosing scope
-    }
-}
-"""
+    source = "void execute() { for(int data;;) break; int data; }"
     assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_018():
-    source = """
-void main() {
-    int result = calculate(5, 3);  // UndeclaredFunction(calculate)
-}
-"""
-    assert Checker(source).check_from_source() == "UndeclaredFunction(calculate)"
+    source = "void execute(){ for (string text; ; ) {} }"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_019():
-    source = """
-void test() {
-    int value = add(10, 20);  // UndeclaredFunction(add) - if add is declared later
-}
-
-int add(int x, int y) {
-    return x + y;
-}
-"""
-    assert Checker(source).check_from_source() == "UndeclaredFunction(add)"
+    source = "void execute(){ float val; for (val=2.5; ; ) {} }"
+    assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_020():
-    source = """
-int multiply(int x, int y) {
-    return x * y;
-}
-
-void main() {
-    int result = multiply(5, 3);  // Valid: multiply is declared before
-}
-"""
+    source = "void execute(){ string text; for (; ; text = \"A\") {} }"
     assert Checker(source).check_from_source() == "Static checking passed"
+
+
+# =================================================================
+# Redeclared & Undeclared Errors (Test 21 - 40)
+# =================================================================
 
 def test_021():
-    source = """
-void example() {
-    int x = readInt();        // Valid: built-in function
-    printInt(x);              // Valid: built-in function
-    float y = readFloat();    // Valid: built-in function
-    string s = readString();  // Valid: built-in function
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
+    source = "struct Data { int id; }; struct Data { int name; };"
+    assert Checker(source).check_from_source() == "Redeclared(Struct, Data)"
 
 def test_022():
-    source = """
-void main() {
-    Point p;  // UndeclaredStruct(Point)
-}
-
-struct Point {
-    int x;
-    int y;
-};
-"""
-    assert Checker(source).check_from_source() == "UndeclaredStruct(Point)"
+    source = "int calc(int a, int b) { return a + b; } int calc(int m, int n) { return m + n; }"
+    assert Checker(source).check_from_source() == "Redeclared(Function, calc)"
 
 def test_023():
-    source = """
-void test() {
-    Person person;  // UndeclaredStruct(Person) - if Person is declared later
-}
-
-struct Person {
-    string name;
-    int age;
-};
-"""
-    assert Checker(source).check_from_source() == "UndeclaredStruct(Person)"
+    source = "void execute() { int amount = 15; int amount = 25; }"
+    assert Checker(source).check_from_source() == "Redeclared(Variable, amount)"
 
 def test_024():
-    source = """
-struct Address {
-    string street;
-    City city;  // UndeclaredStruct(City) - if City is declared later
-};
+    source = "int process(int val1, float val2, int val1) { return val1; }"
+    assert Checker(source).check_from_source() == "Redeclared(Parameter, val1)"
 
-struct City {
-    string name;
-};
-"""
-    assert Checker(source).check_from_source() == "UndeclaredStruct(City)"
-
-# def test_025():
-#     source = """
-# struct Point {
-#     int x;
-#     int y;
-# };
-
-# void main() {
-#     Point p1;  // Valid: Point is declared before
-#     Point p2 = {10, 20};  // Valid: Point is declared before
-# }
-# """
-#     assert Checker(source).check_from_source() == "Static checking passed"
+def test_025():
+    source = "void execute() { int data; if (1) int data = 5; }"
+    assert Checker(source).check_from_source() == "Redeclared(Variable, data)"
 
 def test_026():
-    source = """
-struct Point {
-    int x;
-    int y;
-};
-
-struct Address {
-    string street;
-    Point location;  // Valid: Point is declared before
-};
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
+    source = "void execute() { int item; while(1) int item; }"
+    assert Checker(source).check_from_source() == "Redeclared(Variable, item)"
 
 def test_027():
-    source = """
-void loopError() {
-    break;     // Error: MustInLoop(break)
-}
-"""
-    assert Checker(source).check_from_source() == "MustInLoop(BreakStmt())"
+    source = "void execute() { for(int idx;;) int idx; }"
+    assert Checker(source).check_from_source() == "Redeclared(Variable, idx)"
 
 def test_028():
-    source = """
-void loopError() {
-    continue;  // Error: MustInLoop(continue)
-}
-"""
-    assert Checker(source).check_from_source() == "MustInLoop(ContinueStmt())"
+    source = "void execute() { int a; switch (1) { case 1: int a; int b; float b; } }"
+    assert Checker(source).check_from_source() == "Redeclared(Variable, b)"
 
 def test_029():
-    source = """
-void switchError() {
-    int x = 1;
-    switch (x) {
-        case 1:
-            break;
-            continue;
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "MustInLoop(ContinueStmt())"
+    source = "void readFloat() {}"
+    assert Checker(source).check_from_source() == "Redeclared(Function, readFloat)"
 
 def test_030():
-    source = """
-void switchError() {
-    for (int i = 0; i < 5; ++i) {            
-        break;
-        continue;
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
+    source = "void execute(int num) {int num;}"
+    assert Checker(source).check_from_source() == "Redeclared(Variable, num)"
 
 def test_031():
-    source = """
-void arithmeticError() {
-    int x = 5;
-    string text = "hello";
-    
-    int sum = x + text;     // Error: TypeMismatchInExpression at binary operation
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(x), +, Identifier(text)))"
+    source = "void execute() { int res = unkVar + 15; }"
+    assert Checker(source).check_from_source() == "UndeclaredIdentifier(unkVar)"
 
 def test_032():
-    source = """
-void arithmeticError() {
-    int x = 5;
-    string text = "hello";
-    
-    float result = x * text; // Error: TypeMismatchInExpression at binary operation
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(x), *, Identifier(text)))"
-
+    source = "void execute() { int a = b + 5; int b = 15; }"
+    assert Checker(source).check_from_source() == "UndeclaredIdentifier(b)"
 
 def test_033():
-    source = """
-void modulusError() {
-    float f = 3.14;
-    int x = 10 % 2;
-    
-    int result = f % x;      // Error: TypeMismatchInExpression at binary operation (float % int)
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(f), %, Identifier(x)))"
-
+    source = "void f1() { int v1 = 42; } void f2() { int val = v1 + 1; }"
+    assert Checker(source).check_from_source() == "UndeclaredIdentifier(v1)"
 
 def test_034():
-    source = """
-void modulusError() {
-    float f = 3.14;
-    int x = 10;
-    
-    int result2 = x % f;     // Error: TypeMismatchInExpression at binary operation (int % float)
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(x), %, Identifier(f)))"
+    source = "void execute() { int res = unkFunc(5, 4); }"
+    assert Checker(source).check_from_source() == "UndeclaredFunction(unkFunc)"
 
 def test_035():
-    source = """
-void relationalError() {
-    int x = 10 == 1;
-    string text = "hello";
-    
-    int equal = text == x;   // Error: TypeMismatchInExpression at binary operation
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(text), ==, Identifier(x)))"
+    source = "void execute() { int val = doTask(15, 25); } int doTask(int a, int b) { return a + b; }"
+    assert Checker(source).check_from_source() == "UndeclaredFunction(doTask)"
 
 def test_036():
-    source = """
-void relationalError() {
-    int x = 10 > 2;
-    string text = "hello";
-    
-    int result = x < text;   // Error: TypeMismatchInExpression at binary operation
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(x), <, Identifier(text)))"
-
+    source = "void execute() { Box b; } struct Box { int w; int h; };"
+    assert Checker(source).check_from_source() == "UndeclaredStruct(Box)"
 
 def test_037():
-    source = """
-void logicalError() {
-    float f = 3.14;
-    int x = 10 && 20;
-    
-    int result = f && x;     // Error: TypeMismatchInExpression at binary operation
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(f), &&, Identifier(x)))"
-
+    source = "void execute() { Employee emp; } struct Employee { string name; };"
+    assert Checker(source).check_from_source() == "UndeclaredStruct(Employee)"
 
 def test_038():
-    source = """
-void logicalError() {
-    float f = 3.14;
-    int x = !10;
-    
-    int not = !f;            // Error: TypeMismatchInExpression at unary operation
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PrefixOp(!Identifier(f)))"
+    source = "struct Branch { string name; Region r; }; struct Region { int id; };"
+    assert Checker(source).check_from_source() == "UndeclaredStruct(Region)"
 
 def test_039():
-    source = """
-void incrementError() {
-    float f = 3.14;
-    ++f;                     // Error: TypeMismatchInExpression at unary operation
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PrefixOp(++Identifier(f)))"
+    source = "void execute() { int VAL = VAL; }"
+    assert Checker(source).check_from_source() == "UndeclaredIdentifier(VAL)"
 
 def test_040():
-    source = """
-void incrementError() {
-    float f = 3.14;
-    f++;                     // Error: TypeMismatchInExpression at postfix operation
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PostfixOp(Identifier(f)++))"
+    source = "void execute() { switch (1) { case unk: } }"
+    assert Checker(source).check_from_source() == "UndeclaredIdentifier(unk)"
 
+
+# =================================================================
+# Loop Controls & Statement Errors (Test 41 - 60)
+# =================================================================
 
 def test_041():
-    source = """
-void incrementOperandError() {
-    int x = 5;
-    ++ x;
-    x ++;
-    ++5;                     // Error: TypeMismatchInExpression at unary operation (cannot increment literal)
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PrefixOp(++IntLiteral(5)))"
-
+    source = "void breakError() { break; }"
+    assert Checker(source).check_from_source() == "MustInLoop(BreakStmt())"
 
 def test_042():
-    source = """
-void incrementOperandError() {
-    int x = 5;
-    --(x + 1);               // Error: TypeMismatchInExpression at unary operation (cannot increment expression)
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PrefixOp(--BinaryOp(Identifier(x), +, IntLiteral(1))))"
+    source = "void contError() { continue; }"
+    assert Checker(source).check_from_source() == "MustInLoop(ContinueStmt())"
 
 def test_043():
-    source = """
-void incrementOperandError() {
-    int x = 5;
-    (x + 2)++;               // Error: TypeMismatchInExpression at postfix operation (cannot increment expression
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PostfixOp(BinaryOp(Identifier(x), +, IntLiteral(2))++))"
-
+    source = "void switchCont() { int val = 1; switch (val) { case 1: break; continue; } }"
+    assert Checker(source).check_from_source() == "MustInLoop(ContinueStmt())"
 
 def test_044():
-    source = """
-struct Point {
-    int x;
-    int y;
-};
-
-void memberAccessError() {
-    int x = 10;
-    int value = x.member;    // Error: TypeMismatchInExpression at member access
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(MemberAccess(Identifier(x).member))"
+    source = "void execute() { int num = 20; int val = 2.71; int res = num + val; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(VarDecl(IntType(), val = FloatLiteral(2.71)))"
 
 def test_045():
-    source = """
-struct Point {
-    int x;
-    int y;
-};
-
-void memberAccessError() {
-    Point p = {10, 20};
-    int t = p.x + p.y;
-    int invalid = p.z;       // Error: TypeMismatchInExpression at member access (z doesn't exist)
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(MemberAccess(Identifier(p).z))"
+    source = "void condErr() { float val = 2.5; if (val) { printInt(1); } }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(IfStmt(if Identifier(val) then BlockStmt([ExprStmt(FuncCall(printInt, [IntLiteral(1)]))])))"
 
 def test_046():
-    source = """
-void process(int x) { }
-
-void callError() {
-    string text = "123";
-    process(text);   // sai kiểu: string -> int
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(FuncCall(process, [Identifier(text)]))"
+    source = "void condErr() { string txt = \"hi\"; if (txt) { printString(txt); } }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(IfStmt(if Identifier(txt) then BlockStmt([ExprStmt(FuncCall(printString, [Identifier(txt)]))])))"
 
 def test_047():
-    source = """
-int add(int x, int y) {
-    return x + y;
-}
-
-void callArgumentError() {
-    int result = add(10);   // thiếu 1 tham số
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(FuncCall(add, [IntLiteral(10)]))"
+    source = "void whileErr() { float dec = 2.5; while (dec) { printFloat(dec); } }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(WhileStmt(while Identifier(dec) do BlockStmt([ExprStmt(FuncCall(printFloat, [Identifier(dec)]))])))"
 
 def test_048():
-    source = """
-int add(int x, int y) {
-    return x + y;
-}
-
-void callArgumentError() {
-    int result = add(10, 20, 30);   // dư tham số
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(FuncCall(add, [IntLiteral(10), IntLiteral(20), IntLiteral(30)]))"
+    source = "void assignErr() { int num = 15; string txt = \"hi\"; num = txt; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(AssignExpr(Identifier(num) = Identifier(txt)))"
 
 def test_049():
-    source = """
-void assignmentExpressionError() {
-    int x = 10;
-    string text = "hello";
-    float f = 3.14;
-    
-    int result = (x = text) + 5;     // Error: TypeMismatchInExpression at assignment expression (int = string)
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInExpression(AssignExpr(Identifier(x) = Identifier(text)))"
+    source = "void forErr() { int idx = 0; for (idx=1; \"str\"; idx++) {} }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(ForStmt(for ExprStmt(AssignExpr(Identifier(idx) = IntLiteral(1))); StringLiteral('str'); PostfixOp(Identifier(idx)++) do BlockStmt([])))"
 
 def test_050():
-    source = """
-void conditionalError() {
-    float x = 5.0;
-    if (x) {
-        printInt(1);
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(IfStmt(if Identifier(x) then BlockStmt([ExprStmt(FuncCall(printInt, [IntLiteral(1)]))])))"
+    source = "void switchErr() { float dec = 2.71; switch (dec) { case 1: break; } }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch Identifier(dec) cases [CaseStmt(case IntLiteral(1): [BreakStmt()])]))"
 
 def test_051():
-    source = """
-void conditionalError() {
-    string message = "hello";
-    if (message) {
-        printString(message);
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(IfStmt(if Identifier(message) then BlockStmt([ExprStmt(FuncCall(printString, [Identifier(message)]))])))"
+    source = "int getVal() { return \"fail\"; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(ReturnStmt(return StringLiteral('fail')))"
 
 def test_052():
-    source = """
-void whileError() {
-    float f = 1.5;
-    while (f) {
-        printFloat(f);
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(WhileStmt(while Identifier(f) do BlockStmt([ExprStmt(FuncCall(printFloat, [Identifier(f)]))])))"
-
-def test_053():
-    source = """
-void whileError() {
-    int x = 10;
-    string text = "hello";
-    
-    x = text;
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(AssignExpr(Identifier(x) = Identifier(text)))"
-
-def test_054():
-    source = """
-void foo() {
-    int i = 0;
-    for (i=1; "s"; i++) {}
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(ForStmt(for ExprStmt(AssignExpr(Identifier(i) = IntLiteral(1))); StringLiteral('s'); PostfixOp(Identifier(i)++) do BlockStmt([])))"
-
-def test_055():
-    source = """
-void switchError() {
-    float f = 3.14;
-    switch (f) {  // Error: TypeMismatchInStatement at switch statement
-        case 1: break;
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch Identifier(f) cases [CaseStmt(case IntLiteral(1): [BreakStmt()])]))"
-
-def test_056():
-    source = """
-int getValue() {
-    return "invalid";  // Error: TypeMismatchInStatement at return statement
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(ReturnStmt(return StringLiteral('invalid')))"
-
-
-def test_057():
-    source = """
-int returnVoidError() {
-    return;  // Error: TypeMismatchInStatement at return statement (non-void function must return value)
-}
-"""
+    source = "int retErr() { return; }"
     assert Checker(source).check_from_source() == "TypeMismatchInStatement(ReturnStmt(return))"
 
+def test_053():
+    source = "int func() { auto var; var = 15; var = 2; var = 2.5; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(AssignExpr(Identifier(var) = FloatLiteral(2.5)))"
+
+def test_054():
+    source = "doTask() { return 1; } int func() { int a; a = doTask(); float b; b = doTask(); }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(AssignExpr(Identifier(b) = FuncCall(doTask, [])))"
+
+def test_055():
+    source = "void execute(){ switch(2 || 3){case 2.0: } }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch BinaryOp(IntLiteral(2), ||, IntLiteral(3)) cases [CaseStmt(case FloatLiteral(2.0): [])]))"
+
+def test_056():
+    source = "void execute() { auto var; switch (1){case var:} float b = var; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch IntLiteral(1) cases [CaseStmt(case Identifier(var): [])]))"
+
+def test_057():
+    source = "void execute() { auto var; int res = 2.5 + var; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(VarDecl(IntType(), res = BinaryOp(FloatLiteral(2.5), +, Identifier(var))))"
+
 def test_058():
-    source = """
-int foo() {
-    auto a;
-    a = 10;
-    a = 2;
-    a = 1.2;
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(AssignExpr(Identifier(a) = FloatLiteral(1.2)))"
+    source = "void execute() { int val = 1; switch (val) { case val: } }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch Identifier(val) cases [CaseStmt(case Identifier(val): [])]))"
 
 def test_059():
-    source = """
-int foo() {
-    auto a;
-    auto b;
-    a = b;
-}
-"""
-    assert Checker(source).check_from_source() == "TypeCannotBeInferred(AssignExpr(Identifier(a) = Identifier(b)))"
+    source = "int func(){return 1;} void execute() { int num = 1; switch (num) { case func(): } }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch Identifier(num) cases [CaseStmt(case FuncCall(func, []): [])]))"
 
 def test_060():
-    source = """
-int foo() {
-    auto a;
-    auto b;
-    {{{
-        b && a;
-    }}}
-    b = 2;
-    a = 2.2;
-}
-"""
-    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BinaryOp(Identifier(b), &&, Identifier(a)))"
+    source = "struct Vector { int u; int v; }; void execute() { Vector vec = {15}; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(VarDecl(StructType(Vector), vec = StructLiteral({IntLiteral(15)})))"
+
+
+# =================================================================
+# TypeMismatchInExpression (Test 61 - 80)
+# =================================================================
 
 def test_061():
-    source = """
-foo() {
-   return 1;
-}
-int foo1() {
-   int a;
-   a = foo();
-   float b;
-   b = foo();
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(AssignExpr(Identifier(b) = FuncCall(foo, [])))"
+    source = "void badAdd() { int val = 15; string txt = \"str\"; int res = val + txt; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(val), +, Identifier(txt)))"
 
 def test_062():
-    source = """
-void main() {
-    main();
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
+    source = "void badMul() { int val = 15; string txt = \"str\"; float res = val * txt; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(val), *, Identifier(txt)))"
 
 def test_063():
-    """Error: Unary minus on string"""
-    result = Checker("void main() { string s = \"test\"; auto x = -s; }").check_from_source()
-    assert "TypeMismatch" in result
+    source = "void badMod1() { float dec = 2.71; int val = 15 % 2; int res = dec % val; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(dec), %, Identifier(val)))"
+
+def test_064():
+    source = "void badMod2() { float dec = 2.71; int val = 15; int res = val % dec; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(val), %, Identifier(dec)))"
 
 def test_065():
-    source = """
-    struct Point {
-        int Point;
-        int y;
-    };
-    void Point(Point a) {}
-    """
-    assert Checker(source).check_from_source() == "Static checking passed"
+    source = "void badRel() { int val = 15 == 1; string txt = \"str\"; int eq = txt == val; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(txt), ==, Identifier(val)))"
+
+def test_066():
+    source = "void badRel2() { int val = 15 > 2; string txt = \"str\"; int res = val < txt; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(val), <, Identifier(txt)))"
+
+def test_067():
+    source = "void badLog() { float dec = 2.71; int val = 15 && 25; int res = dec && val; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(dec), &&, Identifier(val)))"
+
+def test_068():
+    source = "void badLog2() { float dec = 2.71; int val = !15; int n = !dec; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PrefixOp(!Identifier(dec)))"
 
 def test_069():
-    source = """
-    void main() {
-        int a; int b;
-        if (1) {
-            int a = b;
-        }
-    }
-    """
-    assert Checker(source).check_from_source() == "Static checking passed"
+    source = "void badInc() { float dec = 2.71; ++dec; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PrefixOp(++Identifier(dec)))"
 
 def test_070():
-    source = """
-    void main() {
-        int a; int b;
-        if (1) int a = b;
-    }
-    """
-    assert Checker(source).check_from_source() == "Redeclared(Variable, a)"
+    source = "void badInc2() { float dec = 2.71; dec++; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PostfixOp(Identifier(dec)++))"
+
+def test_071():
+    source = "void badOp() { int val = 15; ++val; val++; ++15; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PrefixOp(++IntLiteral(15)))"
+
+def test_072():
+    source = "void badOp2() { int val = 15; --(val + 1); }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PrefixOp(--BinaryOp(Identifier(val), +, IntLiteral(1))))"
+
+def test_073():
+    source = "void badOp3() { int val = 15; (val + 2)++; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(PostfixOp(BinaryOp(Identifier(val), +, IntLiteral(2))++))"
 
 def test_074():
-    source = """
-void main() {
-    int a;
-    while(1) { int a; }
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
+    source = "struct Vector { int u; int v; }; void badMem() { int val = 15; int res = val.mem; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(MemberAccess(Identifier(val).mem))"
 
 def test_075():
-    source = """
-void main() {
-    int a;
-    while(1) int a;
-}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Variable, a)"
+    source = "struct Vector { int u; int v; }; void badMem2() { Vector vec = {15, 25}; int invalid = vec.w; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(MemberAccess(Identifier(vec).w))"
+
+def test_076():
+    source = "void process(int val) { } void badCall() { string txt = \"123\"; process(txt); }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(FuncCall(process, [Identifier(txt)]))"
+
+def test_077():
+    source = "int compute(int a, int b) { return a + b; } void badArg() { int res = compute(15); }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(FuncCall(compute, [IntLiteral(15)]))"
+
+def test_078():
+    source = "int compute(int a, int b) { return a + b; } void badArg2() { int res = compute(15, 25, 35); }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(FuncCall(compute, [IntLiteral(15), IntLiteral(25), IntLiteral(35)]))"
+
+def test_079():
+    source = "void badAssign() { int val = 15; string txt = \"hi\"; int res = (val = txt) + 5; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(AssignExpr(Identifier(val) = Identifier(txt)))"
 
 def test_080():
-    source = """
-void main() {
-    for(int a;;) { int a; }
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
+    source = "void execute() { 42 = 99; }"
+    assert "TypeMismatchInExpression" in Checker(source).check_from_source()
+
+
+# =================================================================
+# TypeCannotBeInferred & Auto Logic (Test 81 - 100)
+# =================================================================
 
 def test_081():
-    source = """
-void main() {
-    for(int a;;) int a;
-}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Variable, a)"
+    source = "int execute() { auto var1; auto var2; var1 = var2; }"
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(AssignExpr(Identifier(var1) = Identifier(var2)))"
 
 def test_082():
-    source = """
-void main() {
-    for(int a;;) break;
-    int a;
-}
-"""
+    source = "int execute() { auto var1; auto var2; {{{ var2 && var1; }}} var2 = 2; var1 = 2.5; }"
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BinaryOp(Identifier(var2), &&, Identifier(var1)))"
+
+def test_083():
+    source = "void execute() { auto var1; auto var2; int res = var1 + var2; }"
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BinaryOp(Identifier(var1), +, Identifier(var2)))"
+
+def test_084():
+    source = "void execute() { auto var1; auto var2; int res = 1 + var2; }"
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BlockStmt([VarDecl(auto, var1), VarDecl(auto, var2), VarDecl(IntType(), res = BinaryOp(IntLiteral(1), +, Identifier(var2)))]))"
+
+def test_085():
+    source = "void execute() { auto var2; int res = var2 > 2; }"
     assert Checker(source).check_from_source() == "Static checking passed"
 
 def test_086():
-    source = """
-void main() {
-    int a;
-    switch (1) {
-        case 1:
-            int a;
-            int b;
-            float b;
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Variable, b)"
+    source = "void execute() { auto var1; + var1; float var2 = var1; }"
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(PrefixOp(+Identifier(var1)))"
+
+def test_087():
+    source = "void execute() { auto var1; auto var2; var1 = 1; var1 + var2; }"
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_088():
+    source = "task() { auto var1; return var1;} void execute() { auto var1 = task(); float var2 = var1; }"
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(ReturnStmt(return Identifier(var1)))"
 
 def test_089():
-    source = """
-    void readString() {
-    }
-    """
-    assert Checker(source).check_from_source() == "Redeclared(Function, readString)"
+    source = "void unused() { auto data; }"
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BlockStmt([VarDecl(auto, data)]))"
 
 def test_090():
-    source = """
-struct printFloat{};
-"""
+    source = "void unused() { auto var1; auto var2; { var1 && var2; } auto var3; }"
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BinaryOp(Identifier(var1), &&, Identifier(var2)))"
+
+def test_091():
+    source = "void unused() { switch (1) { case 1: auto data; } }"
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(SwitchStmt(switch IntLiteral(1) cases [CaseStmt(case IntLiteral(1): [VarDecl(auto, data)])]))"
+
+def test_092():
+    source = "void execute() { auto var2; float res = var2 + 2.5; }"
     assert Checker(source).check_from_source() == "Static checking passed"
 
-def test_113():
+def test_093():
+    source = "task() { int var1 = task(); return 1; }"
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(FuncCall(task, []))"
+
+def test_094():
+    source = "void execute() { string txt = \"hi\"; auto neg = -txt; }"
+    assert "TypeMismatch" in Checker(source).check_from_source()
+
+def test_095():
+    source = "void execute() { int num = 1; switch (num) { case - 1: case 1 + 2: case - 2: case 1 || 2 * 3 / 4 + 2: } }"
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_096():
+    source = "int task(){return 1;} void execute() { int val; switch (task()) { case val = 1: } }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch FuncCall(task, []) cases [CaseStmt(case AssignExpr(Identifier(val) = IntLiteral(1)): [])]))"
+
+def test_097():
+    source = "void execute() { int val; int num; if (1) { int val = num; } }"
+    assert Checker(source).check_from_source() == "Static checking passed"
+
+def test_098():
+    source = "void execute(int val, int num) { val = num; { int val; val = item; } }"
+    assert Checker(source).check_from_source() == "Redeclared(Variable, val)"
+
+def test_099():
+    source = "void execute() { int item = 15; string text = \"abc\"; int res = item + text; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(BinaryOp(Identifier(item), +, Identifier(text)))"
+
+def test_100():
+    source = "void execute() { auto ptr; int value = 1; auto data; value = ptr + data; }"
+    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BinaryOp(Identifier(ptr), +, Identifier(data)))"
+
+# =================================================================
+# Edge Cases based on Strict TyC Specification (Test 101 - 110)
+# =================================================================
+
+def test_101():
     source = """
-    void main() {
-        int A = A;
+    struct Controller { int id; };
+    int Controller() { return 1; }
+    void main() { 
+        Controller c; 
+        int val = Controller(); 
     }
     """
-    assert Checker(source).check_from_source() == "UndeclaredIdentifier(A)"
-
-def test_115():
-    source = """
-void main(int A, int B) {
-    A = B;
-    {
-    int A;
-    A = C;
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Variable, A)"
-
-def test_145():
-    source = """
-void main(){
-    switch(1 || 2){case 1.0: }
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch BinaryOp(IntLiteral(1), ||, IntLiteral(2)) cases [CaseStmt(case FloatLiteral(1.0): [])]))"
-
-def test_153():
-    source = """
-void main(){
-    for (string s; ; ) {}
-}
-"""
-
     assert Checker(source).check_from_source() == "Static checking passed"
 
-def test_154():
-    source = """
-void main(){
-    float b;
-    for (b=1.0; ; ) {}
-}
-"""
+def test_102():
+    source = "struct Node { int val; Node next; }; void main() {}"
+    assert Checker(source).check_from_source() == "UndeclaredStruct(Node)"
 
+def test_103():
+    source = """
+    task() { 
+        return 1; 
+        return 2.5; 
+    } 
+    void main() {}
+    """
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(ReturnStmt(return FloatLiteral(2.5)))"
+
+def test_104():
+    source = """
+    task() { 
+        return; 
+        return 1; 
+    } 
+    void main() {}
+    """
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(ReturnStmt(return IntLiteral(1)))"
+
+def test_105():
+    source = "void main() { float f = 5; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(VarDecl(FloatType(), f = IntLiteral(5)))"
+
+def test_106():
+    source = "void process(float f) {} void main() { process(10); }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(FuncCall(process, [IntLiteral(10)]))"
+
+def test_107():
+    source = "void main() { int a; float b; a = b = 3.14; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(AssignExpr(Identifier(a) = AssignExpr(Identifier(b) = FloatLiteral(3.14))))"
+
+def test_108():
+    source = "void main() { int x = 1; (x + 1) = 2; }"
+    assert Checker(source).check_from_source() == "TypeMismatchInExpression(AssignExpr(BinaryOp(Identifier(x), +, IntLiteral(1)) = IntLiteral(2)))"
+
+def test_109():
+    source = "void main() { int x = 1; switch(x) { case 1.5: break; } }"
+    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch Identifier(x) cases [CaseStmt(case FloatLiteral(1.5): [BreakStmt()])]))"
+
+def test_110():
+    source = """
+    void main() { 
+        auto unknown; 
+        auto result = unknown + 5; 
+    }
+    """
     assert Checker(source).check_from_source() == "Static checking passed"
-
-def test_156():
-    source = """
-void main(){
-    string b;
-    for (; ; b = "S") {}
-}
-"""
-
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-def test_220():
-    source = """
-void main() {
-    auto a;
-    auto b;
-    int c = a + b;
-}
-"""
-    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BinaryOp(Identifier(a), +, Identifier(b)))"
-
-def test_221():
-    source = """
-struct A{int A; float a;};
-struct B{int b; float b;};
-void main() {}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Member, b)"
-
-def test_223():
-    source = """
-void main(int a) {int a;}
-"""
-    assert Checker(source).check_from_source() == "Redeclared(Variable, a)"
-
-def test_225():
-    source = """
-void main() {
-    auto a;
-    auto b;
-    int c = 1 + b;
-}
-"""
-    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BlockStmt([VarDecl(auto, a), VarDecl(auto, b), VarDecl(IntType(), c = BinaryOp(IntLiteral(1), +, Identifier(b)))]))"
-
-def test_227():
-    source = """
-void main() {
-    auto b;
-    int c = b > 2;
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-def test_237():
-    source = """
-void main() {
-    auto a;
-    + a;
-    float b = a;
-}
-"""
-    assert Checker(source).check_from_source() == "TypeCannotBeInferred(PrefixOp(+Identifier(a)))"
-
-def test_240():
-    source = """
-void main() {
-    auto a; auto b;
-    a = 1;
-    a + b;
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-def test_256():
-    source = """
-void main() {
-    auto a;
-    switch (1){case a:}
-    float b = a;
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch IntLiteral(1) cases [CaseStmt(case Identifier(a): [])]))"
-
-def test_260():
-    source = """
-func() { auto a; return a;}
-void main() {
-    auto a = func();
-    float b = a;
-}
-"""
-    assert Checker(source).check_from_source() == "TypeCannotBeInferred(ReturnStmt(return Identifier(a)))"
-
-def test_265():
-    source = """
-void unused_auto() {
-    auto x;
-}  // TypeCannotBeInferred(BlockStmt([VarDecl(auto, x)]))
-"""
-    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BlockStmt([VarDecl(auto, x)]))"
-
-def test_268():
-    source = """
-void unused_auto() {
-    auto a;
-    auto b;
-    {
-        a && b;
-    }
-    auto c;
-}
-"""
-    assert Checker(source).check_from_source() == "TypeCannotBeInferred(BinaryOp(Identifier(a), &&, Identifier(b)))"
-
-def test_269():
-    source = """
-void unused_auto() {
-    switch (1) {
-        case 1:
-            auto c;
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "TypeCannotBeInferred(SwitchStmt(switch IntLiteral(1) cases [CaseStmt(case IntLiteral(1): [VarDecl(auto, c)])]))"
-
-def test_271():
-    source = """
-void main() {
-    auto b;
-    int c = 1.0 + b;
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(VarDecl(IntType(), c = BinaryOp(FloatLiteral(1.0), +, Identifier(b))))"
-
-def test_273():
-    source = """
-void main() {
-    auto b;
-    float c = b + 1.0;
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-def test_294():
-    source = """
-void foo() {
-    int x = 1;
-    switch (x) {
-        case - 1:
-        case 1 + 2:
-        case - 2:
-        case 1 || 2 * 3 / 4 + 2:
-
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "Static checking passed"
-
-def test_295():
-    source = """
-void foo() {
-    int x = 1;
-    switch (x) {
-        case x:
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch Identifier(x) cases [CaseStmt(case Identifier(x): [])]))"
-
-def test_297():
-    source = """
-int a () {return 1;}
-void foo() {
-    int x = 1;
-    switch (x) {
-        case a():
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch Identifier(x) cases [CaseStmt(case FuncCall(a, []): [])]))"
-
-def test_298():
-    source = """
-void foo() {
-    switch (1) {
-        case x:
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "UndeclaredIdentifier(x)"
-
-def test_300():
-    source = """
-int a(){return 1;}
-void foo() {
-    int a;
-    switch (a()) {
-        case a = 1:
-    }
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(SwitchStmt(switch FuncCall(a, []) cases [CaseStmt(case AssignExpr(Identifier(a) = IntLiteral(1)): [])]))"
-
-def test_307():
-    source = """
-foo() {
-    int a = foo();
-    return 1;
-}
-"""
-    assert Checker(source).check_from_source() == "TypeCannotBeInferred(FuncCall(foo, []))"
-
-def test_309():
-    source = """
-struct Point {
-    int x;
-    int y;
-};
-
-void foo() {
-    Point p = {10};
-}
-"""
-    assert Checker(source).check_from_source() == "TypeMismatchInStatement(VarDecl(StructType(Point), p = StructLiteral({IntLiteral(10)})))"

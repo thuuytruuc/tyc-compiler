@@ -336,8 +336,16 @@ class ASTGeneration(TyCVisitor):
 # =========================================================
     def visitExpression(self, ctx:TyCParser.ExpressionContext):
         if ctx.ASSIGN():
+            if ctx.element():
+                lhs = self.visit(ctx.element())
+            elif ctx.INT_LIT():
+                lhs = IntLiteral(int(ctx.INT_LIT().getText()))
+            elif ctx.FLOAT_LIT():
+                lhs = FloatLiteral(float(ctx.FLOAT_LIT().getText()))
+            else:
+                lhs = None
             return AssignExpr(
-                self.visit(ctx.element()),
+                lhs,
                 self.visit(ctx.expression())
             )
 
