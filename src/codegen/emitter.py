@@ -146,29 +146,28 @@ class Emitter:
         else:
             return self.jvm.emitLDC(rst)
 
-    def emit_push_const(self, in_: str, typ, frame) -> str:
+    def emit_push_const(self, in_, typ, frame) -> str:
         """
         Generate code to push a constant onto the operand stack.
-        
+
         Args:
-            in_: The lexeme of the constant
+            in_: The value of the constant (int, float, or str)
             typ: The type of the constant
             frame: Frame object for stack management
-            
+
         Returns:
             Generated JVM instruction string
-            
+
         Raises:
             IllegalOperandException: If type is not supported
         """
         if is_int_type(typ):
             return self.emit_push_iconst(in_, frame)
+        elif is_float_type(typ):
+            return self.emit_push_fconst(str(in_), frame)
         elif is_string_type(typ):
             frame.push()
-            # String literals - in_ already contains the string value (without quotes)
-            # For JVM LDC, we need to properly escape the string
-            # Escape backslashes and quotes
-            escaped = in_.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\t', '\\t')
+            escaped = str(in_).replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\t', '\\t')
             return self.jvm.emitLDC(f'"{escaped}"')
         else:
             raise IllegalOperandException(f"Unsupported constant type: {type(typ)}")
@@ -486,30 +485,32 @@ class Emitter:
     def emit_if_true(self, label: int, frame) -> str:
         """
         Generate code to jump to label if the value on top of operand stack is true (non-zero).
-        
+        Uses ifne: branches if integer on stack != 0.
+
         Args:
             label: The label where the execution continues if the value on top of stack is true
             frame: Frame object for stack management
-            
+
         Returns:
             Generated JVM instruction string
         """
         frame.pop()
-        return self.jvm.emitIFGT(label)
+        return self.jvm.emitIFNE(label)
 
     def emit_if_false(self, label: int, frame) -> str:
         """
         Generate code to jump to label if the value on top of operand stack is false (zero).
-        
+        Uses ifeq: branches if integer on stack == 0.
+
         Args:
             label: The label where the execution continues if the value on top of stack is false
             frame: Frame object for stack management
-            
+
         Returns:
             Generated JVM instruction string
         """
         frame.pop()
-        return self.jvm.emitIFLE(label)
+        return self.jvm.emitIFEQ(label)
 
     def emit_dup(self, frame) -> str:
         """
@@ -707,3 +708,175 @@ class Emitter:
         Clear the code buffer.
         """
         self.buff.clear()
+
+    # ------------------------------------------------------------------
+    # Additional emit methods
+    # ------------------------------------------------------------------
+
+    def emit_push_null(self, frame) -> str:
+        """
+        Push a null reference onto the operand stack.
+
+        Args:
+            frame: Frame object for stack management
+
+        Returns:
+            Generated JVM instruction string
+        """
+        frame.push()
+        return self.jvm.emitPUSHNULL()
+
+    def emit_get_static(self, lexeme: str, in_type, frame) -> str:
+        """
+        Emit GETSTATIC to load a static field onto the stack.
+
+        Args:
+            lexeme: Fully-qualified field name, e.g. "ClassName/fieldName"
+            in_type: Field type
+            frame: Frame object for stack management
+
+        Returns:
+            Generated JVM instruction string
+        """
+        frame.push()
+        return self.jvm.emitGETSTATIC(lexeme, self.get_jvm_type(in_type))
+
+    def emit_put_static(self, lexeme: str, in_type, frame) -> str:
+        """
+        Emit PUTSTATIC to store the top-of-stack value into a static field.
+
+        Args:
+            lexeme: Fully-qualified field name, e.g. "ClassName/fieldName"
+            in_type: Field type
+            frame: Frame object for stack management
+
+        Returns:
+            Generated JVM instruction string
+        """
+        frame.pop()
+        return self.jvm.emitPUTSTATIC(lexeme, self.get_jvm_type(in_type))
+
+    def emit_new_array(self, elem_type: str, frame) -> str:
+        """
+        Emit NEWARRAY to create a new primitive array.
+        Pops the length from the stack and pushes the new array reference.
+
+        Args:
+            elem_type: Primitive element type keyword ("int", "float", etc.)
+            frame: Frame object for stack management
+
+        Returns:
+            Generated JVM instruction string
+        """
+        # pops length, pushes array ref — net effect: no change, but we model it
+        frame.pop()
+        frame.push()
+        return self.jvm.emitNEWARRAY(elem_type)
+
+    def emit_a_new_array(self, class_name: str, frame) -> str:
+        """
+        Emit ANEWARRAY to create a new reference-type array.
+        Pops the length from the stack and pushes the new array reference.
+
+        Args:
+            class_name: Element class name (e.g. "java/lang/String")
+            frame: Frame object for stack management
+
+        Returns:
+            Generated JVM instruction string
+        """
+        frame.pop()
+        frame.push()
+        return self.jvm.emitANEWARRAY(class_name)
+
+    def emit_array_load(self, elem_type, frame) -> str:
+        """
+        Emit array element load (iaload / faload / aaload).
+        Pops arrayref and index, pushes element value.
+
+        Args:
+            elem_type: Element type
+            frame: Frame object for stack management
+
+        Returns:
+            Generated JVM instruction string
+        """
+        frame.pop()  # index
+        frame.pop()  # arrayref
+        frame.push()  # element
+        if is_int_type(elem_type):
+            return self.jvm.emitIALOAD()
+        elif is_float_type(elem_type):
+            return self.jvm.emitFALOAD()
+        else:
+            return self.jvm.emitAALOAD()
+
+    def emit_array_store(self, elem_type, frame) -> str:
+        """
+        Emit array element store (iastore / fastore / aastore).
+        Pops arrayref, index, and value.
+
+        Args:
+            elem_type: Element type
+            frame: Frame object for stack management
+
+        Returns:
+            Generated JVM instruction string
+        """
+        frame.pop()  # value
+        frame.pop()  # index
+        frame.pop()  # arrayref
+        if is_int_type(elem_type):
+            return self.jvm.emitIASTORE()
+        elif is_float_type(elem_type):
+            return self.jvm.emitFASTORE()
+        else:
+            return self.jvm.emitAASTORE()
+
+    def emit_invoke_virtual(self, lexeme: str, in_type, frame) -> str:
+        """
+        Emit INVOKEVIRTUAL for instance method calls.
+        Pops the object reference and all arguments; pushes return value if non-void.
+
+        Args:
+            lexeme: Fully-qualified method name, e.g. "java/io/PrintStream/println"
+            in_type: FunctionType descriptor of the method
+            frame: Frame object for stack management
+
+        Returns:
+            Generated JVM instruction string
+        """
+        frame.pop()  # object reference
+        for _ in in_type.param_types:
+            frame.pop()
+        if not is_void_type(in_type.return_type):
+            frame.push()
+        return self.jvm.emitINVOKEVIRTUAL(lexeme, self.get_jvm_type(in_type))
+
+    def emit_f2i(self, frame) -> str:
+        """
+        Emit F2I instruction to convert float on top of stack to int.
+        No stack depth change.
+
+        Args:
+            frame: Frame object for stack management
+
+        Returns:
+            Generated JVM instruction string
+        """
+        # float -> int: pops float, pushes int (same slot count)
+        return "\tf2i\n"
+
+    def emit_checkcast(self, class_name: str, frame) -> str:
+        """
+        Emit CHECKCAST instruction for runtime type checking.
+        Does not change stack depth.
+
+        Args:
+            class_name: Target class name
+            frame: Frame object for stack management
+
+        Returns:
+            Generated JVM instruction string
+        """
+        return f"\tcheckcast {class_name}\n"
