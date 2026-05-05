@@ -1019,3 +1019,198 @@ def test_102():
     from tests.utils import ASTGenerator, CodeGenerator
     ast = ASTGenerator(source).generate()
     assert CodeGenerator().generate_and_run(ast) == "12.2votien"
+
+
+def test_103():
+    source = """
+    struct Point {
+        int x;
+        int y;
+    };
+    void main(){
+        Point p;
+        p.x = 2;
+        printInt(p.x);
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast) == "2"
+
+def test_104():
+    source = """
+    void main(){
+        int a;
+        float b;
+        string c;
+        printInt(a);
+        printFloat(b);
+        printString(c);
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast) == "00.0"
+
+def test_105():
+    source = """
+    struct Point {
+        int x;
+        float y;
+        string z;
+    };
+    void main(){
+        Point p;
+        printInt(p.x);
+        printFloat(p.y);
+        printString(p.z);
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast) == "00.0"
+
+def test_106():
+    source = """
+    foo(int a, int b) {return a + b;}
+    void main(){
+        auto a; auto b;
+        printInt(foo(a, b));
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast) == "0"
+
+def test_107():
+    source = """
+    void main() {
+        // With auto and initialization
+        auto x = readInt();
+        auto y = readFloat();
+        auto name = readString();
+    
+        // With auto without initialization
+        auto sum;
+        sum = x + y;              // sum: float (inferred from first usage - assignment)
+    
+        // With explicit type and initialization
+        int count = 0;
+        float total = 0.0;
+        string greeting = "Hello, ";
+    
+        // With explicit type without initialization
+        int i;
+        float f;
+        i = readInt();            // assignment to int
+        f = readFloat();          // assignment to float
+    
+        printFloat(sum);
+        printString(greeting);
+        printString(name);
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast, "4\n0.2\nvotien\n1\n1.0\n") == "4.2Hello, votien"
+
+def test_108():
+    source = """
+    void main() {
+        int i = 0;
+        while (i < 5) {
+            i = i + 1;
+            switch (i) {
+                case 2: continue;
+                case 4: break;
+                default: printInt(i);
+            }
+            printInt(i);
+        }
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast) == "1133455"
+
+def test_109():
+    source = """
+    void main() {
+        int i = 2;
+        switch (i) {
+            default: int i = 3;
+        }
+        printInt(i);
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast) == "2"
+
+
+def test_110():
+    source = """
+    void main() {
+        int a = 5;
+        printInt(++a);  // 6
+        printInt(a);    // 6
+        printInt(--a);  // 5
+        printInt(a);    // 5
+        printInt(+ + +a);   // 5
+        printInt(- - -a);   // -5
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast) == "66555-5"
+
+def test_111():
+    source = """
+    int factorial(int n) {
+        if (n <= 1) {
+            return 1;
+        } else {
+            return n * factorial(n - 1);
+        }
+    }
+    void main() {
+        auto num = 10;
+        auto result = factorial(num);
+        printInt(result);
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast) == "3628800"
+
+def test_112():
+    source = """
+    void main() {
+        int x = 3;
+        switch (x) {
+            case 1: printInt(1);
+            case 3: printInt(3);
+            case 5: printInt(5);
+            default: printInt(7);
+        }
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast) == "357"
+
+def test_113():
+    source = """
+    void main() {
+        int x = 5;
+        switch (x) {
+            case 1: printInt(1);
+            case 3: printInt(3);
+            case 5: int b = 2; printInt(b);
+            default: b = 3; printInt(b);
+        }
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast) == "23"
