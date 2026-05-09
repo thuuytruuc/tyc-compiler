@@ -217,12 +217,38 @@ class CodeGenerator(BaseVisitor):
             )
         )
         if node.init_value is not None:
-            if isinstance(node.init_value, StructLiteral) and is_struct_type(var_type):
+            if is_struct_type(var_type) and not isinstance(node.init_value, StructLiteral):
+                # Deep copy: Line l2 = l1  →  new Line(l1)
+                # 1. Evaluate RHS → push rhs ref
+                rhs_code, _ = self.visit(node.init_value, access)
+                self.emit.print_out(rhs_code)
+                # 2. Store rhs into a temporary local so we can load it after new+dup
+                tmp_idx = frame.get_new_index()
+                self.emit.print_out(f"\tastore {tmp_idx}\n")
+                frame.pop()
+                # 3. new StructType
+                frame.push()
+                self.emit.print_out(f"\tnew {var_type.struct_name}\n")
+                # 4. dup (keep ref for store)
+                frame.push()
+                self.emit.print_out(f"\tdup\n")
+                # 5. load rhs from temp
+                frame.push()
+                self.emit.print_out(f"\taload {tmp_idx}\n")
+                # 6. invokespecial StructType/<init>(LStructType;)V — pops (this + arg)
+                frame.pop()
+                frame.pop()
+                self.emit.print_out(f"\tinvokespecial {var_type.struct_name}/<init>(L{var_type.struct_name};)V\n")
+                # 7. store result (the initialized new object)
+                self.emit.print_out(self.emit.emit_write_var(node.name, var_type, idx, frame))
+            elif isinstance(node.init_value, StructLiteral) and is_struct_type(var_type):
                 rhs_code, _ = self._emit_struct_literal(node.init_value, var_type, access)
+                self.emit.print_out(rhs_code)
+                self.emit.print_out(self.emit.emit_write_var(node.name, var_type, idx, frame))
             else:
                 rhs_code, _ = self.visit(node.init_value, access)
-            self.emit.print_out(rhs_code)
-            self.emit.print_out(self.emit.emit_write_var(node.name, var_type, idx, frame))
+                self.emit.print_out(rhs_code)
+                self.emit.print_out(self.emit.emit_write_var(node.name, var_type, idx, frame))
         else:
             if is_struct_type(var_type):
                 self.emit.print_out(self.emit.emit_new_instance(var_type.struct_name, frame))
@@ -380,29 +406,70 @@ class CodeGenerator(BaseVisitor):
             lhs_sym = self._lookup_symbol(node.lhs.name, o.sym)
             lhs_type = lhs_sym.type
             idx = lhs_sym.value.value
-            if isinstance(node.rhs, StructLiteral) and is_struct_type(lhs_type):
-                rhs_code, rhs_type = self._emit_struct_literal(node.rhs, lhs_type, o)
+            if is_struct_type(lhs_type):
+                if isinstance(node.rhs, StructLiteral):
+                    rhs_code, rhs_type = self._emit_struct_literal(node.rhs, lhs_type, o)
+                    code = rhs_code + self.emit.emit_dup(frame) + self.emit.emit_write_var(node.lhs.name, lhs_type, idx, frame)
+                    return code, rhs_type
+                else:
+                    # Execute in bytecode order so frame tracking works
+                    code = self.emit.emit_read_var(node.lhs.name, lhs_type, idx, frame)
+                    rhs_code, rhs_type = self.visit(node.rhs, o)
+                    code += rhs_code
+                    frame.pop() # pop RHS
+                    frame.pop() # pop LHS
+                    code += f"\tinvokevirtual {lhs_type.struct_name}/copy(L{lhs_type.struct_name};)V\n"
+                    # Assignment evaluates to LHS
+                    code += self.emit.emit_read_var(node.lhs.name, lhs_type, idx, frame)
+                    return code, lhs_type
             else:
                 rhs_code, rhs_type = self.visit(node.rhs, o)
-            code = rhs_code + self.emit.emit_dup(frame) + self.emit.emit_write_var(
-                node.lhs.name, lhs_type, idx, frame
-            )
-            return code, rhs_type
+                code = rhs_code + self.emit.emit_dup(frame) + self.emit.emit_write_var(
+                    node.lhs.name, lhs_type, idx, frame
+                )
+                return code, rhs_type
         elif isinstance(node.lhs, MemberAccess):
-            # obj.field = rhs  =>  load obj, load rhs, putfield
             obj_code, obj_type = self.visit(node.lhs.obj, o)
             if not is_struct_type(obj_type):
                 raise RuntimeError("MemberAccess assignment on non-struct")
             field_type = self._get_member_type(obj_type.struct_name, node.lhs.member)
-            if isinstance(node.rhs, StructLiteral) and is_struct_type(field_type):
-                rhs_code, rhs_type = self._emit_struct_literal(node.rhs, field_type, o)
+            
+            if is_struct_type(field_type):
+                if isinstance(node.rhs, StructLiteral):
+                    rhs_code, rhs_type = self._emit_struct_literal(node.rhs, field_type, o)
+                    field_lexeme = f"{obj_type.struct_name}/{node.lhs.member}"
+                    code = obj_code + rhs_code + self.emit.emit_dup_x1(frame) + self.emit.emit_put_field(field_lexeme, field_type, frame)
+                    return code, rhs_type
+                else:
+                    # DEEP COPY: obj.field.copy(rhs)
+                    code = obj_code
+                    field_lexeme = f"{obj_type.struct_name}/{node.lhs.member}"
+                    jvm_type = self.emit.get_jvm_type(field_type)
+                    # getfield pops obj, pushes field (net 0)
+                    code += f"\tgetfield {field_lexeme} {jvm_type}\n"
+                    
+                    rhs_code, rhs_type = self.visit(node.rhs, o)
+                    code += rhs_code
+                    
+                    # invokevirtual pops RHS and field
+                    frame.pop()
+                    frame.pop()
+                    code += f"\tinvokevirtual {field_type.struct_name}/copy(L{field_type.struct_name};)V\n"
+                    
+                    # Evaluate to the field: we must evaluate LHS object again
+                    # BUT evaluating it again by just appending the string doesn't update the frame simulator!
+                    # So we must manually push 1 element (the object) to the simulator!
+                    frame.push()
+                    code += obj_code
+                    # getfield pops obj, pushes field (net 0)
+                    code += f"\tgetfield {field_lexeme} {jvm_type}\n"
+                    return code, field_type
             else:
                 rhs_code, rhs_type = self.visit(node.rhs, o)
-            field_lexeme = f"{obj_type.struct_name}/{node.lhs.member}"
-            # dup_x1: stack was [..., obj, rhs] -> [..., rhs, obj, rhs]
-            code = obj_code + rhs_code + self.emit.emit_dup_x1(frame)
-            code += self.emit.emit_put_field(field_lexeme, field_type, frame)
-            return code, rhs_type
+                field_lexeme = f"{obj_type.struct_name}/{node.lhs.member}"
+                code = obj_code + rhs_code + self.emit.emit_dup_x1(frame)
+                code += self.emit.emit_put_field(field_lexeme, field_type, frame)
+                return code, rhs_type
         else:
             raise RuntimeError("Assignment LHS must be Identifier or MemberAccess")
 
@@ -412,8 +479,25 @@ class CodeGenerator(BaseVisitor):
         fn_type = fn_sym.type
         code = ""
         for arg in node.args:
-            arg_code, _ = self.visit(arg, o)
-            code += arg_code
+            arg_code, arg_type = self.visit(arg, o)
+            if is_struct_type(arg_type):
+                # Pass-by-value: deep-copy via constructor new StructType(arg)
+                struct_name = arg_type.struct_name
+                code += arg_code            # push original ref
+                tmp_idx = frame.get_new_index()
+                code += f"\tastore {tmp_idx}\n"
+                frame.pop()
+                frame.push()
+                code += f"\tnew {struct_name}\n"
+                frame.push()
+                code += f"\tdup\n"
+                frame.push()
+                code += f"\taload {tmp_idx}\n"
+                frame.pop()
+                frame.pop()
+                code += f"\tinvokespecial {struct_name}/<init>(L{struct_name};)V\n"
+            else:
+                code += arg_code
         code += self.emit.emit_invoke_static(f"{fn_sym.value.value}/{node.name}", fn_type, frame)
         return code, fn_type.return_type
 
@@ -466,6 +550,53 @@ class CodeGenerator(BaseVisitor):
         struct_emit.print_out(".limit stack 3\n")
         struct_emit.print_out(".limit locals 1\n")
         struct_emit.print_out(".end method\n")
+
+        # Copy method: public void copy(StructType other)
+        struct_emit.print_out(f"\n.method public copy(L{node.name};)V\n")
+        struct_emit.print_out("Label0:\n")
+        for member in node.members:
+            jvm_type = struct_emit.get_jvm_type(member.member_type)
+            # Shallow copy: primitive fields by value, nested struct fields by reference
+            struct_emit.print_out("\taload_0\n")
+            struct_emit.print_out("\taload_1\n")
+            struct_emit.print_out(f"\tgetfield {node.name}/{member.name} {jvm_type}\n")
+            struct_emit.print_out(f"\tputfield {node.name}/{member.name} {jvm_type}\n")
+        struct_emit.print_out("\treturn\n")
+        struct_emit.print_out("Label1:\n")
+        struct_emit.print_out(".limit stack 2\n")
+        struct_emit.print_out(".limit locals 2\n")
+        struct_emit.print_out(".end method\n")
+
+        # Deep-copy constructor: public <init>(StructType other)
+        # Used for: StructType var = other;  →  new StructType(other)
+        struct_emit.print_out(f"\n.method public <init>(L{node.name};)V\n")
+        struct_emit.print_out("Label0:\n")
+        struct_emit.print_out("\taload_0\n")
+        struct_emit.print_out("\tinvokespecial java/lang/Object/<init>()V\n")
+        for member in node.members:
+            jvm_type = struct_emit.get_jvm_type(member.member_type)
+            if is_struct_type(member.member_type):
+                nested_name = member.member_type.struct_name
+                # this.field = new NestedType(other.field)
+                struct_emit.print_out("\taload_0\n")
+                struct_emit.print_out(f"\tnew {nested_name}\n")
+                struct_emit.print_out("\tdup\n")
+                struct_emit.print_out("\taload_1\n")
+                struct_emit.print_out(f"\tgetfield {node.name}/{member.name} {jvm_type}\n")
+                struct_emit.print_out(f"\tinvokespecial {nested_name}/<init>(L{nested_name};)V\n")
+                struct_emit.print_out(f"\tputfield {node.name}/{member.name} {jvm_type}\n")
+            else:
+                # this.field = other.field
+                struct_emit.print_out("\taload_0\n")
+                struct_emit.print_out("\taload_1\n")
+                struct_emit.print_out(f"\tgetfield {node.name}/{member.name} {jvm_type}\n")
+                struct_emit.print_out(f"\tputfield {node.name}/{member.name} {jvm_type}\n")
+        struct_emit.print_out("\treturn\n")
+        struct_emit.print_out("Label1:\n")
+        struct_emit.print_out(".limit stack 4\n")
+        struct_emit.print_out(".limit locals 2\n")
+        struct_emit.print_out(".end method\n")
+
         struct_emit.emit_epilog()
         return None
 

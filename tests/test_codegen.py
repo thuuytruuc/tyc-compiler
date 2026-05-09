@@ -1214,3 +1214,111 @@ def test_113():
     from tests.utils import ASTGenerator, CodeGenerator
     ast = ASTGenerator(source).generate()
     assert CodeGenerator().generate_and_run(ast) == "23"
+
+
+def test_114():
+    source = """
+    struct Point {
+        int x;
+        int y;
+    };
+    void main() {
+        Point p1;
+        Point p2;
+        p2.x = 10;
+        p2.y = 20;
+        p1 = p2;   // copy struct
+        p2.x = 99;
+        p2.y = 88;
+        printInt(p1.x);
+        printInt(p1.y);
+        printInt(p2.x);
+        printInt(p2.y);
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast) == "10209988"
+
+
+def test_115():
+    source = """
+    struct Point {
+        int x;
+        int y;
+    };
+    void main() {
+        Point a;
+        Point b;
+        a = b = {1, 2};
+        printInt(a.x);
+        printInt(a.y);
+        printInt(b.x);
+        printInt(b.y);
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast) == "1212"
+
+def test_116():
+    source = """
+    struct A { int x; };
+    struct B { A a; };
+    struct C { B b; };
+    struct D { C c; };
+    void main() {
+        D d1;
+        D d2;
+        d2.c.b.a.x = 10;
+        d1 = d2 = d2;
+        printInt(d1.c.b.a.x);
+        printInt(d2.c.b.a.x);
+        d2.c.b.a.x = d2.c.b.a.x + d2.c.b.a.x - 10 + 10;
+        printInt(d1.c.b.a.x);
+        printInt(d2.c.b.a.x);
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast) == "10102020"
+
+def test_117():
+    source = """
+    struct Point {
+        int x;
+        int y;
+    };
+    struct Line {
+        Point start;
+        Point end;
+    };
+    void main(){
+        Line l1;
+        l1.start.x = 10;
+        l1.end.x = 20;
+        Line l2 = l1;
+        l2.start.x = 99;
+        l2.end.x = 88;
+        printInt(l1.start.x);
+        printInt(l1.end.x);
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast) == "1020"
+
+def test_118():
+    source = """
+    struct Point { int x; };
+    void change(Point p){ p.x = 99; }
+    void main(){
+        Point a;
+        a.x = 10;
+        change(a);
+        printInt(a.x);
+    }
+    """
+    from tests.utils import ASTGenerator, CodeGenerator
+    ast = ASTGenerator(source).generate()
+    assert CodeGenerator().generate_and_run(ast) == "10"
